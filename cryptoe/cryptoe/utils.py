@@ -3,15 +3,12 @@ __author__ = 'Sean Davis <dive@endersgame.net>'
 from Crypto.Util import Counter
 from Crypto.Hash import HMAC, SHA512
 from Crypto.Cipher import AES
-from Crypto import Random
 import math
 import struct
 import rdrand
 
 DEFAULT_PBKDF2_ITERATIONS = 20000
 QUAD = struct.Struct('>Q')
-SUPPORTED_RNGS = ['rdrand', 'pycrypto', 'devrandom', 'devurandom']
-
 
 def long2ba(val):
     """
@@ -44,28 +41,13 @@ def ba2long(val):
             N += ord(b)
     return long(N)
 
-
-def _pycrypto_rand_bytes(sz):
-    return Random.new().read(sz)
-
-
-def _devrandom_read_bytes(sz):
-    return open('/dev/urandom', 'rb').read(sz)
-
-
-def _devurandom_read_bytes(sz):
-    return open('/dev/random', 'rb').read(sz)
-
-
-def rndbytes(sz, rng=None):
+def rndbytes(sz):
     """
     Return sz random bytes
     :param sz: how many bytes
-    :return: bytearray
+    :return: bytes
     """
-    if rng not in RNG_MAP:
-        raise ValueError('Unsupported RNG')
-    return RNG_MAP[rng](sz)
+    return rdrand.rdrand_bytes(sz)
 
 
 def __pack_for_kdf(string):
@@ -172,10 +154,3 @@ def aes_wrap_key_withpad(kek, plaintext):
     plaintext += "\0" * (8 - len(plaintext) % 8)
     return aes_wrap_key(kek, plaintext, iv)
 
-
-RNG_MAP = {
-    'rdrand': rdrand.rdrand_bytes,
-    'pycrypto': _pycrypto_rand_bytes,
-    'devrandom': _devrandom_read_bytes,
-    'devurandom': _devurandom_read_bytes,
-}
