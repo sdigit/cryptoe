@@ -18,7 +18,7 @@ from Crypto.Hash import HMAC, SHA256
 from Crypto.Cipher import AES
 import math
 import struct
-import rdrand
+import cryptoe_ext
 
 DEFAULT_PBKDF2_ITERATIONS = 20000
 QUAD = struct.Struct('>Q')
@@ -62,7 +62,7 @@ def rndbytes(sz):
     :param sz: how many bytes
     :return: bytes
     """
-    return rdrand.rdrand_bytes(sz)
+    return cryptoe_ext.rdrand_bytes(sz)
 
 
 def __pack_for_kdf(string):

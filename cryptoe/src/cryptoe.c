@@ -26,10 +26,9 @@
  * $egnet: pyrdrand.c,v 1.2 2015/04/17 19:45:33 dive Exp $
  */
 
-#include <python2.7/Python.h>
 #include <inttypes.h>
-#include "rdrand.h"
-#include "pyrdrand.h"
+#include "include/rdrand.h"
+#include "include/cryptoe.h"
 
 static PyObject *
 rdrand32(self, args)
@@ -160,12 +159,12 @@ rdrand_bytes(self, args)
 }
 
 
-static PyMethodDef rdrand_methods[] = {
-    {"rdrand32",
+static PyMethodDef cryptoe_ext_methods[] = {
+    {"rdrand_32",
      rdrand32,
      METH_VARARGS,
      "Return 32-bit integers from RDRAND"},
-    {"rdrand64",
+    {"rdrand_64",
      rdrand64,
      METH_VARARGS,
      "Return 64-bit integers from RDRAND"},
@@ -177,8 +176,8 @@ static PyMethodDef rdrand_methods[] = {
 };
 
 PyMODINIT_FUNC
-initrdrand(void)
+initcryptoe_ext(void)
 {
-    Py_InitModule("rdrand", rdrand_methods);
+    Py_InitModule("cryptoe_ext", cryptoe_ext_methods);
 }
 

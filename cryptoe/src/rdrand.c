@@ -36,7 +36,7 @@ POSSIBILITY OF SUCH DAMAGE. */
  *
  */
 
-#include "rdrand.h"
+#include "include/rdrand.h"
 
 #include <string.h>
 #include <stdint.h>
