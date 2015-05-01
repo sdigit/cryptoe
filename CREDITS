@@ -1,0 +1,9 @@
+This project includes code from other sources, which are listed below. If your code is in here and I have not
+given you credit, PLEASE submit a pull request! Some snippets did not contain a license, and it's certainly possible
+that I overlooked some attribution that was due. If I have used code of yours that was not marked with a license, and
+you do not wish for it to be included in a BSD licensed work, please let me know.
+
+I may have added bugs. I won't make the original authors take credit for those.
+
+#) The AES Key Wrap code in utils.py was first found here:
+    https://gist.github.com/doublereedkurt/4243633
