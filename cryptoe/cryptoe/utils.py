@@ -190,6 +190,7 @@ def aes_wrap_key_withpad(kek, plaintext):
     plaintext += "\0" * (8 - len(plaintext) % 8)
     return aes_wrap_key(kek, plaintext, iv)
 
+
 def key128_to_str(key):
     """
     Convert 128-bit key (bytes or int) to RFC1751 format
