@@ -65,45 +65,24 @@ def rndbytes(sz):
     return cryptoe_ext.rdrand_bytes(sz)
 
 
-def __pack_for_kdf(string):
-    return struct.pack('>' + ('s' * len(string)), string)
-
-
-def __prf(k, s):
-    """
-    This provides the Pseudo-Random Function for CTR-KDF.
-
-    :param k: Key
-    :param s: Data
-    :return:
-    """
-    h = HMAC.new(k, digestmod=SHA256)
-    h.update(s)
-    r = h.digest()
-    del h
-    return r
-
-
 def ctrkdf(key, label, context, sz=256):
     n = int(math.ceil(float(sz) / float(32)))
-    prev = b''
     result = ''
+    packer = lambda x: struct.pack('>' + 's' * len(x), *x)
     i = 1
     if n > (pow(2, 256) - 1):
         raise ValueError
-    fmt = {
-        'lbl': '>%s' % 's' * len(label),
-        'ctx': '>%s' % 's' * len(context),
-    }
-    # noinspection PyTypeChecker
-    fmt = fmt['lbl'] + 0x00 + fmt['ctx']
+    ctx = label + '\x00' + context
     while i <= n:
-        ko = __prf(key, struct.pack('>L', i) + fmt + struct.pack('>L', sz))
-        result = result + ko
+        h = HMAC.new(key)
+        h.update(packer(struct.pack('>B', i) + ctx + struct.pack('>L', sz)))
+        ko = h.digest()
+        result = result + h.digest()
         i += 1
         del ko
+    ctx = ''
+    del ctx
     del n
-    del prev
     del i
     return b''.join(result)[:sz / 8]
 
