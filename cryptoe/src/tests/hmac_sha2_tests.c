@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
 void test(const char *vector, unsigned char *digest,
           unsigned int digest_size)
 {
@@ -15,10 +16,9 @@ void test(const char *vector, unsigned char *digest,
        sprintf(output + 2*i, "%02x", digest[i]);
     }
 
-    printf("H: %s\n", output);
     if (strcmp(vector, output)) {
-        fprintf(stderr, "Test failed.\n");
-        exit(1);
+        fprintf(stderr, "FAIL: %s\n  !=  %s\n",vector,output);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -26,15 +26,6 @@ int main(void)
 {
     static const char *vectors[] =
     {
-        /* HMAC-SHA-224 */
-        "896fb1128abbdf196832107cd49df33f47b4b1169912ba4f53684b22",
-        "a30e01098bc6dbbf45690f3a7e9e6d0f8bbea2a39e6148008fd05e44",
-        "7fb3cb3588c6c1f6ffa9694d7d6ad2649365b0c1f65d69d1ec8333ea",
-        "6c11506874013cac6a2abc1bb382627cec6a90d86efc012de7afec5a",
-        "0e2aea68a90c8d37c988bcdb9fca6fa8",
-        "95e9a0db962095adaebe9b2d6f0dbce2d499f112f2d2b7273fa6870e",
-        "3a854166ac5d9f023f54d517d0b39dbd946770db9c2b95c9f6f565d1",
-        /* HMAC-SHA-256 */
         "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7",
         "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843",
         "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe",
@@ -89,7 +80,9 @@ int main(void)
     unsigned char *keys[7];
     unsigned int keys_len[7] = {20, 4, 20, 25, 20, 131, 131};
     unsigned int messages2and3_len = 50;
-    unsigned int mac_224_size, mac_256_size, mac_384_size, mac_512_size;
+    unsigned int mac_256_size;
+    unsigned int mac_384_size;
+    unsigned int mac_512_size;
     int i;
 
     for (i = 0; i < 7; i++) {
@@ -123,37 +116,30 @@ int main(void)
     memset(messages[2], 0xdd, messages2and3_len);
     memset(messages[3], 0xcd, messages2and3_len);
 
-    printf("HMAC-SHA-2 IETF Validation tests\n\n");
+    printf("HMAC-SHA-2 IETF Validation\n");
 
     for (i = 0; i < 7; i++) {
         if (i != 4) {
-            mac_224_size = SHA224_DIGEST_SIZE;
             mac_256_size = SHA256_DIGEST_SIZE;
             mac_384_size = SHA384_DIGEST_SIZE;
             mac_512_size = SHA512_DIGEST_SIZE;
         } else {
-            mac_224_size = 128 / 8; mac_256_size = 128 / 8;
-            mac_384_size = 128 / 8; mac_512_size = 128 / 8;
+            mac_256_size = 128 / 8;
+            mac_384_size = 128 / 8;
+            mac_512_size = 128 / 8;
         }
 
-        printf("Test %d:\n", i + 1);
-
-        hmac_sha224(keys[i], keys_len[i], (unsigned char *) messages[i],
-                    strlen(messages[i]), mac, mac_224_size);
-        test(vectors[i], mac, mac_224_size);
         hmac_sha256(keys[i], keys_len[i], (unsigned char *) messages[i],
                     strlen(messages[i]), mac, mac_256_size);
-        test(vectors[7 + i], mac, mac_256_size);
+        test(vectors[i], mac, mac_256_size);
         hmac_sha384(keys[i], keys_len[i], (unsigned char *) messages[i],
                     strlen(messages[i]), mac, mac_384_size);
-        test(vectors[14 + i], mac, mac_384_size);
+        test(vectors[7 + i], mac, mac_384_size);
         hmac_sha512(keys[i], keys_len[i], (unsigned char *) messages[i],
                     strlen(messages[i]), mac, mac_512_size);
-        test(vectors[21 + i], mac, mac_512_size);
+        test(vectors[14 + i], mac, mac_512_size);
     }
-
-    printf("All tests passed.\n");
-
+    printf("No failed tests.\n");
     return 0;
 }
 

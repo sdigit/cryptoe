@@ -50,23 +50,16 @@ void test(const char *vector, unsigned char *digest,
        sprintf(output + 2 * i, "%02x", digest[i]);
     }
 
-    printf("H: %s\n", output);
     if (strcmp(vector, output)) {
-        fprintf(stderr, "Test failed.\n");
+        fprintf(stderr, "FAIL: %s\n  !=  %s\n",vector,output);
         exit(EXIT_FAILURE);
     }
 }
 
 int main(void)
 {
-    static const char *vectors[4][3] =
-    {   /* SHA-224 */
-        {
-        "23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7",
-        "75388b16512776cc5dba5da1fd890150b0c6455cb4f58b1952522525",
-        "20794655980c91d8bbb4c1ea97618a4bf03f42581948b2ee4ee7ad67",
-        },
-        /* SHA-256 */
+    static const char *vectors[3][3] =
+    {   /* SHA-256 */
         {
         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
         "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
@@ -109,48 +102,28 @@ int main(void)
     }
     memset(message3, 'a', message3_len);
 
-    printf("SHA-2 FIPS 180-2 Validation tests\n\n");
-    printf("SHA-224 Test vectors\n");
-
-    sha224((const unsigned char *) message1, strlen(message1), digest);
-    test(vectors[0][0], digest, SHA224_DIGEST_SIZE);
-    sha224((const unsigned char *) message2a, strlen(message2a), digest);
-    test(vectors[0][1], digest, SHA224_DIGEST_SIZE);
-    sha224(message3, message3_len, digest);
-    test(vectors[0][2], digest, SHA224_DIGEST_SIZE);
-    printf("\n");
-
-    printf("SHA-256 Test vectors\n");
+    printf("SHA-2 FIPS 180-2 Validation\n");
 
     sha256((const unsigned char *) message1, strlen(message1), digest);
-    test(vectors[1][0], digest, SHA256_DIGEST_SIZE);
+    test(vectors[0][0], digest, SHA256_DIGEST_SIZE);
     sha256((const unsigned char *) message2a, strlen(message2a), digest);
-    test(vectors[1][1], digest, SHA256_DIGEST_SIZE);
+    test(vectors[0][1], digest, SHA256_DIGEST_SIZE);
     sha256(message3, message3_len, digest);
-    test(vectors[1][2], digest, SHA256_DIGEST_SIZE);
-    printf("\n");
-
-    printf("SHA-384 Test vectors\n");
+    test(vectors[0][2], digest, SHA256_DIGEST_SIZE);
 
     sha384((const unsigned char *) message1, strlen(message1), digest);
-    test(vectors[2][0], digest, SHA384_DIGEST_SIZE);
+    test(vectors[1][0], digest, SHA384_DIGEST_SIZE);
     sha384((const unsigned char *)message2b, strlen(message2b), digest);
-    test(vectors[2][1], digest, SHA384_DIGEST_SIZE);
+    test(vectors[1][1], digest, SHA384_DIGEST_SIZE);
     sha384(message3, message3_len, digest);
-    test(vectors[2][2], digest, SHA384_DIGEST_SIZE);
-    printf("\n");
-
-    printf("SHA-512 Test vectors\n");
+    test(vectors[1][2], digest, SHA384_DIGEST_SIZE);
 
     sha512((const unsigned char *) message1, strlen(message1), digest);
-    test(vectors[3][0], digest, SHA512_DIGEST_SIZE);
+    test(vectors[2][0], digest, SHA512_DIGEST_SIZE);
     sha512((const unsigned char *) message2b, strlen(message2b), digest);
-    test(vectors[3][1], digest, SHA512_DIGEST_SIZE);
+    test(vectors[2][1], digest, SHA512_DIGEST_SIZE);
     sha512(message3, message3_len, digest);
-    test(vectors[3][2], digest, SHA512_DIGEST_SIZE);
-    printf("\n");
-
-    printf("All tests passed.\n");
-
+    test(vectors[2][2], digest, SHA512_DIGEST_SIZE);
+    printf("No failed tests.\n");
     return 0;
 }
