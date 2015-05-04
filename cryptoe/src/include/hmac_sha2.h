@@ -67,7 +67,6 @@
 #ifndef HMAC_SHA2_H
 #define HMAC_SHA2_H
 
-#define SHA224_DIGEST_SIZE ( 224 / 8)
 #define SHA256_DIGEST_SIZE ( 256 / 8)
 #define SHA384_DIGEST_SIZE ( 384 / 8)
 #define SHA512_DIGEST_SIZE ( 512 / 8)
@@ -75,7 +74,6 @@
 #define SHA256_BLOCK_SIZE  ( 512 / 8)
 #define SHA512_BLOCK_SIZE  (1024 / 8)
 #define SHA384_BLOCK_SIZE  SHA512_BLOCK_SIZE
-#define SHA224_BLOCK_SIZE  SHA256_BLOCK_SIZE
 
 #ifndef SHA2_TYPES
 #define SHA2_TYPES
@@ -99,19 +97,6 @@ typedef struct {
 } sha512_ctx;
 
 typedef sha512_ctx sha384_ctx;
-typedef sha256_ctx sha224_ctx;
-
-typedef struct {
-    sha224_ctx ctx_inside;
-    sha224_ctx ctx_outside;
-
-    /* for hmac_reinit */
-    sha224_ctx ctx_inside_reinit;
-    sha224_ctx ctx_outside_reinit;
-
-    unsigned char block_ipad[SHA224_BLOCK_SIZE];
-    unsigned char block_opad[SHA224_BLOCK_SIZE];
-} hmac_sha224_ctx;
 
 typedef struct {
     sha256_ctx ctx_inside;
@@ -149,13 +134,6 @@ typedef struct {
     unsigned char block_opad[SHA512_BLOCK_SIZE];
 } hmac_sha512_ctx;
 
-void sha224_init(sha224_ctx *ctx);
-void sha224_update(sha224_ctx *ctx, const unsigned char *message,
-                   unsigned int len);
-void sha224_final(sha224_ctx *ctx, unsigned char *digest);
-void sha224(const unsigned char *message, unsigned int len,
-            unsigned char *digest);
-
 void sha256_init(sha256_ctx * ctx);
 void sha256_update(sha256_ctx *ctx, const unsigned char *message,
                    unsigned int len);
@@ -176,17 +154,6 @@ void sha512_update(sha512_ctx *ctx, const unsigned char *message,
 void sha512_final(sha512_ctx *ctx, unsigned char *digest);
 void sha512(const unsigned char *message, unsigned int len,
             unsigned char *digest);
-
-void hmac_sha224_init(hmac_sha224_ctx *ctx, const unsigned char *key,
-                      unsigned int key_size);
-void hmac_sha224_reinit(hmac_sha224_ctx *ctx);
-void hmac_sha224_update(hmac_sha224_ctx *ctx, const unsigned char *message,
-                        unsigned int message_len);
-void hmac_sha224_final(hmac_sha224_ctx *ctx, unsigned char *mac,
-                       unsigned int mac_size);
-void hmac_sha224(const unsigned char *key, unsigned int key_size,
-                 const unsigned char *message, unsigned int message_len,
-                 unsigned char *mac, unsigned mac_size);
 
 void hmac_sha256_init(hmac_sha256_ctx *ctx, const unsigned char *key,
                       unsigned int key_size);

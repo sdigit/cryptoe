@@ -26,7 +26,8 @@
 
 #define PY_SSIZE_T_CLEAN /* proper types are nice */
 
-#include <python2.7/Python.h>
+#include <Python.h>
+#include <structmember.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <immintrin.h> /* AVX please */
@@ -34,6 +35,9 @@
 #include "include/hmac_sha2.h"
 #include "include/rdrand.h"
 
+/*
+ * RDRAND code
+ */
 static PyObject *
 rdrand32(PyObject *self, PyObject *args)
 {
@@ -156,6 +160,9 @@ rdrand_bytes(PyObject *self, PyObject *args)
     }
 }
 
+/*
+ * SHA2 code
+ */
 static PyObject *
 sha2_256(PyObject *self, PyObject *args)
 {
@@ -243,13 +250,293 @@ sha2_512(PyObject *self, PyObject *args)
     return retval;
 }
 
+#if 0
+typedef struct {
+    PyObject_HEAD
+    hmac_sha256_ctx ctx;
+} HMAC_SHA2_256_CTX;
+
+typedef struct {
+    PyObject_HEAD
+    hmac_sha384_ctx ctx;
+} HMAC_SHA2_384_CTX;
+
+typedef struct {
+    PyObject_HEAD
+    hmac_sha512_ctx ctx;
+} HMAC_SHA2_512_CTX;
+
+/*
+ * destructors
+ */
+static void
+HMAC_SHA2_256_CTX_dealloc(HMAC_SHA2_256_CTX *self)
+{
+    memset(&self->ctx,0,sizeof(hmac_sha256_ctx));
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static void
+HMAC_SHA2_384_CTX_dealloc(HMAC_SHA2_384_CTX *self)
+{
+    memset(&self->ctx,0,sizeof(hmac_sha384_ctx));
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static void
+HMAC_SHA2_512_CTX_dealloc(HMAC_SHA2_512_CTX *self)
+{
+    memset(&self->ctx,0,sizeof(hmac_sha512_ctx));
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+/*
+ * constructors
+ */
+static PyObject *
+HMAC_SHA2_256_CTX_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    HMAC_SHA2_256_CTX *self;
+
+    self = (HMAC_SHA2_256_CTX *)type->tp_alloc(type, 0);
+    if (self != NULL)
+    {
+        memset(&self->ctx,0,sizeof(hmac_sha256_ctx));
+    }
+
+    return (PyObject *)self;
+}
+
+static PyObject *
+HMAC_SHA2_384_CTX_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    HMAC_SHA2_384_CTX *self;
+
+    self = (HMAC_SHA2_384_CTX *)type->tp_alloc(type, 0);
+    if (self != NULL)
+    {
+        memset(&self->ctx,0,sizeof(hmac_sha384_ctx));
+    }
+
+    return (PyObject *)self;
+}
+
+static PyObject *
+HMAC_SHA2_512_CTX_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    HMAC_SHA2_512_CTX *self;
+
+    self = (HMAC_SHA2_512_CTX *)type->tp_alloc(type, 0);
+    if (self != NULL)
+    {
+        memset(&self->ctx,0,sizeof(hmac_sha512_ctx));
+    }
+
+    return (PyObject *)self;
+}
+
+/*
+ * Initialization routines
+ */
+PyMODINIT_FUNC
+HMAC_SHA2_256_CTX_init(void)
+{
+    PyObject* m;
+
+    HMAC_SHA2_256_CTX_Type.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&HMAC_SHA2_256_CTX_Type) < 0)
+        return;
+
+    m = Py_InitModule3("HMAC_SHA2_256", HMAC_CTX_METHODS,
+                       "HMAC_SHA2_256 Context");
+
+    Py_INCREF(&HMAC_SHA2_256_CTX_Type);
+    PyModule_AddObject(m, "HMAC_SHA2_256", (PyObject *)&HMAC_SHA2_256_CTX_Type);
+}
+
+static PyTypeObject HMAC_SHA2_256_CTX_Type = {
+    PyObject_HEAD_INIT(NULL)
+    0,                                        /* ob_size */
+    "crypto_ext.HMAC_SHA2_256_CTX",           /* tp_name */
+    sizeof(HMAC_SHA2_256_CTX),                /* tp_basicsize */
+    0,                                        /* tp_itemsize */
+    (destructor)HMAC_SHA2_256_CTX_dealloc,    /* tp_dealloc */
+    0,                                        /* tp_print */
+    0,                                        /* tp_getattr */
+    0,                                        /* tp_setattr */
+    0,                                        /* tp_compare */
+    0,                                        /* tp_repr */
+    0,                                        /* tp_as_number */
+    0,                                        /* tp_as_sequence */
+    0,                                        /* tp_as_mapping */
+    0,                                        /* tp_hash */
+    0,                                        /* tp_call */
+    0,                                        /* tp_str */
+    0,                                        /* tp_getattro */
+    0,                                        /* tp_setattro */
+    0,                                        /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
+    "HMAC_SHA2_256_CTX for internal context", /* tp_doc */
+    0,                                        /* tp_traverse */
+    0,                                        /* tp_clear */
+    0,                                        /* tp_richcompare */
+    0,                                        /* tp_weaklistoffset */
+    0,                                        /* tp_iter */
+    0,                                        /* tp_iternext */
+    0,                                        /* tp_methods */
+    0,                                        /* tp_members */
+    0,                                        /* tp_getset */
+    0,                                        /* tp_base */
+    0,                                        /* tp_dict */
+    0,                                        /* tp_descr_get */
+    0,                                        /* tp_descr_set */
+    0,                                        /* tp_dictoffset */
+    (initproc)HMAC_SHA2_256_CTX_init,         /* tp_init */
+    0,                                        /* tp_alloc */
+    HMAC_SHA2_256_CTX_new,                    /* tp_new */
+};
+
+PyMODINIT_FUNC
+HMAC_SHA2_384_CTX_init(void)
+{
+    PyObject* m;
+
+    HMAC_SHA2_384_CTX_Type.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&HMAC_SHA2_384_CTX_Type) < 0)
+        return;
+
+    m = Py_InitModule3("HMAC_SHA2_384", HMAC_CTX_METHODS,
+                       "HMAC_SHA2_384 Context");
+
+    Py_INCREF(&HMAC_SHA2_384_CTX_Type);
+    PyModule_AddObject(m, "HMAC_SHA2_384", (PyObject *)&HMAC_SHA2_384_CTX_Type);
+}
+
+static PyTypeObject HMAC_SHA2_384_CTX_Type = {
+    PyObject_HEAD_INIT(NULL)
+    0,                                        /* ob_size */
+    "crypto_ext.HMAC_SHA2_384_CTX",           /* tp_name */
+    sizeof(HMAC_SHA2_384_CTX),                /* tp_basicsize */
+    0,                                        /* tp_itemsize */
+    (destructor)HMAC_SHA2_384_CTX_dealloc,    /* tp_dealloc */
+    0,                                        /* tp_print */
+    0,                                        /* tp_getattr */
+    0,                                        /* tp_setattr */
+    0,                                        /* tp_compare */
+    0,                                        /* tp_repr */
+    0,                                        /* tp_as_number */
+    0,                                        /* tp_as_sequence */
+    0,                                        /* tp_as_mapping */
+    0,                                        /* tp_hash */
+    0,                                        /* tp_call */
+    0,                                        /* tp_str */
+    0,                                        /* tp_getattro */
+    0,                                        /* tp_setattro */
+    0,                                        /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
+    "HMAC_SHA2_384_CTX for internal context", /* tp_doc */
+    0,                                        /* tp_traverse */
+    0,                                        /* tp_clear */
+    0,                                        /* tp_richcompare */
+    0,                                        /* tp_weaklistoffset */
+    0,                                        /* tp_iter */
+    0,                                        /* tp_iternext */
+    0,                                        /* tp_methods */
+    0,                                        /* tp_members */
+    0,                                        /* tp_getset */
+    0,                                        /* tp_base */
+    0,                                        /* tp_dict */
+    0,                                        /* tp_descr_get */
+    0,                                        /* tp_descr_set */
+    0,                                        /* tp_dictoffset */
+    (initproc)HMAC_SHA2_384_CTX_init,         /* tp_init */
+    0,                                        /* tp_alloc */
+    HMAC_SHA2_384_CTX_new,                    /* tp_new */
+};
+
+PyMODINIT_FUNC
+HMAC_SHA2_512_CTX_init(void)
+{
+    PyObject* m;
+
+    HMAC_SHA2_512_CTX_Type.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&HMAC_SHA2_512_CTX_Type) < 0)
+        return;
+
+    m = Py_InitModule3("HMAC_SHA2_512", HMAC_CTX_METHODS,
+                       "HMAC_SHA2_512 Context");
+
+    Py_INCREF(&HMAC_SHA2_512_CTX_Type);
+    PyModule_AddObject(m, "HMAC_SHA2_512", (PyObject *)&HMAC_SHA2_512_CTX_Type);
+}
+
+static PyTypeObject HMAC_SHA2_512_CTX_Type = {
+    PyObject_HEAD_INIT(NULL)
+    0,                                        /* ob_size */
+    "crypto_ext.HMAC_SHA2_512_CTX",           /* tp_name */
+    sizeof(HMAC_SHA2_512_CTX),                /* tp_basicsize */
+    0,                                        /* tp_itemsize */
+    (destructor)HMAC_SHA2_512_CTX_dealloc,    /* tp_dealloc */
+    0,                                        /* tp_print */
+    0,                                        /* tp_getattr */
+    0,                                        /* tp_setattr */
+    0,                                        /* tp_compare */
+    0,                                        /* tp_repr */
+    0,                                        /* tp_as_number */
+    0,                                        /* tp_as_sequence */
+    0,                                        /* tp_as_mapping */
+    0,                                        /* tp_hash */
+    0,                                        /* tp_call */
+    0,                                        /* tp_str */
+    0,                                        /* tp_getattro */
+    0,                                        /* tp_setattro */
+    0,                                        /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
+    "HMAC_SHA2_512_CTX for internal context", /* tp_doc */
+    0,                                        /* tp_traverse */
+    0,                                        /* tp_clear */
+    0,                                        /* tp_richcompare */
+    0,                                        /* tp_weaklistoffset */
+    0,                                        /* tp_iter */
+    0,                                        /* tp_iternext */
+    0,                                        /* tp_methods */
+    0,                                        /* tp_members */
+    0,                                        /* tp_getset */
+    0,                                        /* tp_base */
+    0,                                        /* tp_dict */
+    0,                                        /* tp_descr_get */
+    0,                                        /* tp_descr_set */
+    0,                                        /* tp_dictoffset */
+    (initproc)HMAC_SHA2_512_CTX_init,         /* tp_init */
+    0,                                        /* tp_alloc */
+    HMAC_SHA2_512_CTX_new,                    /* tp_new */
+};
+#endif /* (#if 0): HMAC code is not yet ready */
+
+/*
+ * Methods implemented by cryptoe for export to Python
+ */
 static PyMethodDef cryptoe_ext_methods[] = {
-    {"rdrand_32",rdrand32,METH_VARARGS,"Return 32-bit integers from RDRAND"},
-    {"rdrand_64",rdrand64,METH_VARARGS,"Return 64-bit integers from RDRAND"},
-    {"rdrand_bytes",rdrand_bytes,METH_VARARGS,"Return random bytes"},
-    {"sha2_256",sha2_256,METH_VARARGS,"Return SHA2-256 digest"},
-    {"sha2_384",sha2_384,METH_VARARGS,"Return SHA2-384 digest"},
-    {"sha2_512",sha2_512,METH_VARARGS,"Return SHA2-512 digest"},
+    {"rdrand_32",
+     rdrand32,METH_VARARGS,
+     "Return 32-bit integers from RDRAND"},
+    {"rdrand_64",
+     rdrand64,METH_VARARGS,
+     "Return 64-bit integers from RDRAND"},
+    {"rdrand_bytes",
+     rdrand_bytes,
+     METH_VARARGS,
+     "Return random bytes"},
+    {"sha2_256",
+     sha2_256,METH_VARARGS,
+     "Return SHA2-256 digest"},
+    {"sha2_384",
+     sha2_384,METH_VARARGS,
+     "Return SHA2-384 digest"},
+    {"sha2_512",
+     sha2_512,
+     METH_VARARGS,
+     "Return SHA2-512 digest"},
     {NULL,NULL,0,NULL}
 };
 
