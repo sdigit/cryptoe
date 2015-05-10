@@ -16,7 +16,6 @@ from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util import Counter, RFC1751
 from Crypto.Hash import HMAC, SHA256
 from Crypto.Cipher import AES
-import math
 import struct
 import cryptoe_ext
 
@@ -63,28 +62,6 @@ def rndbytes(sz):
     :return: bytes
     """
     return cryptoe_ext.rdrand_bytes(sz)
-
-
-def ctrkdf(key, label, context, sz=256):
-    n = int(math.ceil(float(sz) / float(32)))
-    result = ''
-    packer = lambda x: struct.pack('>' + 's' * len(x), *x)
-    i = 1
-    if n > (pow(2, 256) - 1):
-        raise ValueError
-    ctx = label + '\x00' + context
-    while i <= n:
-        h = HMAC.new(key)
-        h.update(packer(struct.pack('>B', i) + ctx + struct.pack('>L', sz)))
-        ko = h.digest()
-        result = result + h.digest()
-        i += 1
-        del ko
-    ctx = ''
-    del ctx
-    del n
-    del i
-    return b''.join(result)[:sz / 8]
 
 
 def ctr_enc(k, msg):
