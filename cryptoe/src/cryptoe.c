@@ -163,92 +163,73 @@ rdrand_bytes(PyObject *self, PyObject *args)
 /*
  * SHA2 code
  */
+
 static PyObject *
-sha2_256(PyObject *self, PyObject *args)
+SHA256(PyObject *self, PyObject *args)
 {
-    unsigned char *msg, *digest;
+    unsigned char digest[SHA256_DIGEST_SIZE];
+    unsigned char *msg;
     Py_ssize_t len;
     PyObject *retval;
 
-    Py_BEGIN_ALLOW_THREADS
-    if (!PyArg_ParseTuple(args, "s#", &msg, &len))
+    if (!PyArg_ParseTuple(args, "z#", &msg, &len))
         return NULL;
     if (len > UINT_MAX)
     {
         PyErr_NoMemory();
         return NULL;
     }
-    digest = (unsigned char *)malloc(SHA256_DIGEST_SIZE);
-    if (digest == NULL)
-    {
-        PyErr_NoMemory();
-        return NULL;
-    }
-    sha256(msg,len,digest);
+    sha256((const unsigned char *)msg,len,(unsigned char *)&digest);
+    memset(msg,0,len);
     retval = PyString_FromStringAndSize((const char *)digest, SHA256_DIGEST_SIZE);
-    memset(digest,0,SHA256_DIGEST_SIZE);
-    free(digest);
-    Py_END_ALLOW_THREADS
+    memset(&digest,0,SHA256_DIGEST_SIZE);
     return retval;
 }
 
 static PyObject *
-sha2_384(PyObject *self, PyObject *args)
+SHA384(PyObject *self, PyObject *args)
 {
-    unsigned char *msg, *digest;
+    unsigned char digest[SHA384_DIGEST_SIZE];
+    unsigned char *msg;
     Py_ssize_t len;
     PyObject *retval;
 
-    Py_BEGIN_ALLOW_THREADS
-    if (!PyArg_ParseTuple(args, "s#", &msg, &len))
+    if (!PyArg_ParseTuple(args, "z#", &msg, &len))
         return NULL;
     if (len > UINT_MAX)
     {
         PyErr_NoMemory();
         return NULL;
     }
-    digest = (unsigned char *)malloc(SHA384_DIGEST_SIZE);
-    if (digest == NULL)
-    {
-        PyErr_NoMemory();
-        return NULL;
-    }
-    sha384(msg,len,digest);
+    sha384((const unsigned char *)msg,len,(unsigned char *)&digest);
+    memset(msg,0,len);
     retval = PyString_FromStringAndSize((const char *)digest, SHA384_DIGEST_SIZE);
-    memset(digest,0,SHA384_DIGEST_SIZE);
-    free(digest);
-    Py_END_ALLOW_THREADS
+    memset(&digest,0,SHA384_DIGEST_SIZE);
     return retval;
 }
 
 static PyObject *
-sha2_512(PyObject *self, PyObject *args)
+SHA512(PyObject *self, PyObject *args)
 {
-    unsigned char *msg, *digest;
+    unsigned char digest[SHA512_DIGEST_SIZE];
+    unsigned char *msg;
     Py_ssize_t len;
     PyObject *retval;
 
-    Py_BEGIN_ALLOW_THREADS
-    if (!PyArg_ParseTuple(args, "s#", &msg, &len))
+    if (!PyArg_ParseTuple(args, "z#", &msg, &len))
         return NULL;
     if (len > UINT_MAX)
     {
         PyErr_NoMemory();
         return NULL;
     }
-    digest = (unsigned char *)malloc(SHA512_DIGEST_SIZE);
-    if (digest == NULL)
-    {
-        PyErr_NoMemory();
-        return NULL;
-    }
-    sha512(msg,len,digest);
+    sha512((const unsigned char *)msg,len,(unsigned char *)&digest);
+    memset(msg,0,len);
     retval = PyString_FromStringAndSize((const char *)digest, SHA512_DIGEST_SIZE);
-    memset(digest,0,SHA512_DIGEST_SIZE);
-    free(digest);
-    Py_END_ALLOW_THREADS
+    memset(&digest,0,SHA512_DIGEST_SIZE);
     return retval;
 }
+
 
 #if 0
 typedef struct {
@@ -527,16 +508,18 @@ static PyMethodDef cryptoe_ext_methods[] = {
      rdrand_bytes,
      METH_VARARGS,
      "Return random bytes"},
-    {"sha2_256",
-     sha2_256,METH_VARARGS,
-     "Return SHA2-256 digest"},
-    {"sha2_384",
-     sha2_384,METH_VARARGS,
-     "Return SHA2-384 digest"},
-    {"sha2_512",
-     sha2_512,
+    {"SHA256",
+     SHA256,
      METH_VARARGS,
-     "Return SHA2-512 digest"},
+     "Return SHA-256 digest"},
+    {"SHA384",
+     SHA384,
+     METH_VARARGS,
+     "Return SHA-384 digest"},
+    {"SHA512",
+     SHA512,
+     METH_VARARGS,
+     "Return SHA-512 digest"},
     {NULL,NULL,0,NULL}
 };
 

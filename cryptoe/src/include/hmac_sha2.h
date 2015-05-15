@@ -140,6 +140,8 @@ void sha256_update(sha256_ctx *ctx, const unsigned char *message,
 void sha256_final(sha256_ctx *ctx, unsigned char *digest);
 void sha256(const unsigned char *message, unsigned int len,
             unsigned char *digest);
+void shad256(const unsigned char *message, unsigned int len,
+             unsigned char *digest);
 
 void sha384_init(sha384_ctx *ctx);
 void sha384_update(sha384_ctx *ctx, const unsigned char *message,
@@ -147,6 +149,8 @@ void sha384_update(sha384_ctx *ctx, const unsigned char *message,
 void sha384_final(sha384_ctx *ctx, unsigned char *digest);
 void sha384(const unsigned char *message, unsigned int len,
             unsigned char *digest);
+void shad384(const unsigned char *message, unsigned int len,
+             unsigned char *digest);
 
 void sha512_init(sha512_ctx *ctx);
 void sha512_update(sha512_ctx *ctx, const unsigned char *message,
@@ -154,6 +158,8 @@ void sha512_update(sha512_ctx *ctx, const unsigned char *message,
 void sha512_final(sha512_ctx *ctx, unsigned char *digest);
 void sha512(const unsigned char *message, unsigned int len,
             unsigned char *digest);
+void shad512(const unsigned char *message, unsigned int len,
+             unsigned char *digest);
 
 void hmac_sha256_init(hmac_sha256_ctx *ctx, const unsigned char *key,
                       unsigned int key_size);
