@@ -42,7 +42,7 @@ static PyObject *
 rdrand32(PyObject *self, PyObject *args)
 {
     PyObject *item;
-    unsigned int rdrand_arg;
+    uint64_t rdrand_arg;
     int rdrand_ret;
     uint32_t *data;
 
@@ -67,7 +67,7 @@ rdrand32(PyObject *self, PyObject *args)
     {
         PyObject *retval;
         retval = PyTuple_New(rdrand_arg);
-        unsigned int i;
+        uint64_t i;
         for (i=0;i<rdrand_arg;i++)
         {
             item = PyLong_FromUnsignedLong(data[i]);
@@ -85,7 +85,7 @@ static PyObject *
 rdrand64(PyObject *self, PyObject *args)
 {
     PyObject *item;
-    unsigned int rdrand_arg;
+    uint64_t rdrand_arg;
     int rdrand_ret;
     uint64_t *data;
 
@@ -109,7 +109,7 @@ rdrand64(PyObject *self, PyObject *args)
     else if (rdrand_ret == RDRAND_SUCCESS)
     {
         PyObject *retval;
-        unsigned int i;
+        uint64_t i;
         retval = PyTuple_New(rdrand_arg);
         for (i=0;i<rdrand_arg;i++)
         {
@@ -127,7 +127,7 @@ rdrand64(PyObject *self, PyObject *args)
 static PyObject *
 rdrand_bytes(PyObject *self, PyObject *args)
 {
-    unsigned int rdrand_arg;
+    uint64_t rdrand_arg;
     int rdrand_ret;
     unsigned char *buf;
 
@@ -174,7 +174,7 @@ SHA256(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "z#", &msg, &len))
         return NULL;
-    if (len > UINT_MAX)
+    if (len > ULONG_MAX)
     {
         PyErr_NoMemory();
         return NULL;
@@ -196,7 +196,7 @@ SHA384(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "z#", &msg, &len))
         return NULL;
-    if (len > UINT_MAX)
+    if (len > ULONG_MAX)
     {
         PyErr_NoMemory();
         return NULL;
@@ -218,7 +218,7 @@ SHA512(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "z#", &msg, &len))
         return NULL;
-    if (len > UINT_MAX)
+    if (len > ULONG_MAX)
     {
         PyErr_NoMemory();
         return NULL;
@@ -495,6 +495,112 @@ static PyTypeObject HMAC_SHA2_512_CTX_Type = {
 #endif /* (#if 0): HMAC code is not yet ready */
 
 /*
+ * one-shot SHA2 HMAC routines
+ */
+
+static PyObject *
+HMAC_SHA256(PyObject *self, PyObject *args)
+{
+    unsigned char mac[SHA256_DIGEST_SIZE];
+    unsigned char *key, *msg;
+    Py_ssize_t key_len, msg_len, mac_len;
+    PyObject *retval;
+
+    mac_len = -1;
+    if (!PyArg_ParseTuple(args, "z#z#n", &key, &key_len, &msg, &msg_len, &mac_len))
+        return NULL;
+
+    if (key_len > SHA256_DIGEST_SIZE ||
+        mac_len > SHA256_DIGEST_SIZE ||
+        msg_len > ULONG_MAX ||
+        mac_len <= 0)
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    if (mac_len == -1)
+        mac_len = SHA256_DIGEST_SIZE;
+
+    hmac_sha256((const unsigned char *)key, key_len,
+                (const unsigned char *)msg, msg_len,
+                (unsigned char *)&mac, mac_len);
+    memset(key,0,key_len);
+    memset(msg,0,msg_len);
+    retval = PyString_FromStringAndSize((const char *)mac, mac_len);
+    memset(&mac,0,SHA256_DIGEST_SIZE);
+    return retval;
+}
+
+static PyObject *
+HMAC_SHA384(PyObject *self, PyObject *args)
+{
+    unsigned char mac[SHA384_DIGEST_SIZE];
+    unsigned char *key, *msg;
+    Py_ssize_t key_len, msg_len, mac_len;
+    PyObject *retval;
+
+    mac_len = -1;
+    if (!PyArg_ParseTuple(args, "z#z#n", &key, &key_len, &msg, &msg_len, &mac_len))
+        return NULL;
+
+    if (key_len > SHA384_DIGEST_SIZE ||
+        mac_len > SHA384_DIGEST_SIZE ||
+        msg_len > ULONG_MAX ||
+        mac_len <= 0)
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    if (mac_len == -1)
+        mac_len = SHA384_DIGEST_SIZE;
+
+    hmac_sha384((const unsigned char *)key, key_len,
+                (const unsigned char *)msg, msg_len,
+                (unsigned char *)&mac, mac_len);
+    memset(key,0,key_len);
+    memset(msg,0,msg_len);
+    retval = PyString_FromStringAndSize((const char *)mac, mac_len);
+    memset(&mac,0,SHA384_DIGEST_SIZE);
+    return retval;
+}
+
+static PyObject *
+HMAC_SHA512(PyObject *self, PyObject *args)
+{
+    unsigned char mac[SHA512_DIGEST_SIZE];
+    unsigned char *key, *msg;
+    Py_ssize_t key_len, msg_len, mac_len;
+    PyObject *retval;
+
+    mac_len = -1;
+
+    if (!PyArg_ParseTuple(args, "z#z#n", &key, &key_len, &msg, &msg_len, &mac_len))
+        return NULL;
+
+    if (key_len > SHA512_DIGEST_SIZE ||
+        mac_len > SHA512_DIGEST_SIZE ||
+        msg_len > ULONG_MAX ||
+        mac_len <= 0)
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    if (mac_len == -1)
+        mac_len = SHA512_DIGEST_SIZE;
+
+    hmac_sha512((const unsigned char *)key, key_len,
+                (const unsigned char *)msg, msg_len,
+                (unsigned char *)&mac, mac_len);
+    memset(key,0,key_len);
+    memset(msg,0,msg_len);
+    retval = PyString_FromStringAndSize((const char *)mac, mac_len);
+    memset(&mac,0,SHA512_DIGEST_SIZE);
+    return retval;
+}
+
+
+/*
  * Methods implemented by cryptoe for export to Python
  */
 static PyMethodDef cryptoe_ext_methods[] = {
@@ -520,6 +626,18 @@ static PyMethodDef cryptoe_ext_methods[] = {
      SHA512,
      METH_VARARGS,
      "Return SHA-512 digest"},
+    {"HMAC_SHA256",
+     HMAC_SHA256,
+     METH_VARARGS,
+     "HMAC-SHA-256(k,m)"},
+    {"HMAC_SHA384",
+     HMAC_SHA384,
+     METH_VARARGS,
+     "HMAC-SHA-384(k,m)"},
+    {"HMAC_SHA512",
+     HMAC_SHA512,
+     METH_VARARGS,
+     "HMAC-SHA-512(k,m)"},
     {NULL,NULL,0,NULL}
 };
 

@@ -16,6 +16,3 @@ Due to heavy reliance on Intel RDRAND, this WILL NOT work on a system lacking it
 2. Add unit tests, primarily selftests for the algorithms
 3. Add RNG test results. Right now I have a lot of data from dieharder on RDRAND, as that's why Cryptoe uses it, but for the sake of completeness it should include dieharder tests of all supported RNGs.
 4. Add a generic KMS class for storage of key data and key metadata in a secure manner. This will most likely be done first for sqlite3 and psycopg2.
-
-
-
