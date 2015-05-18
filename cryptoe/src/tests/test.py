@@ -7,6 +7,9 @@ __author__ = 'Sean Davis <dive@endersgame.net>'
 
 import cryptoe_ext
 
+from collections import OrderedDict
+
+import Crypto.Hash.HMAC
 import Crypto.Hash.SHA256
 import Crypto.Hash.SHA384
 import Crypto.Hash.SHA512
@@ -32,6 +35,8 @@ class DigestWrapper(object):
         """
         Run the configured hash function and return its result
         :param msg: message to hash
+        :type msg: str
+        :rtype: str
         """
         if callable(self.thing):
             return self.thing(msg)
@@ -42,7 +47,53 @@ class DigestWrapper(object):
             return retval
 
 
-test_funcs = {
+class HMACWrapper(object):
+    """
+    Wrapper for PEP 247 HMAC functions or cryptoe_ext HMAC functions
+    """
+
+    def __init__(self, name, thing, arg):
+        """
+        :rtype : HMACWrapper
+        :param name:
+        :param thing:
+        :param arg:
+        """
+        self.name = name
+        self.thing = thing
+        self.arg = arg
+
+    def __repr__(self):
+        return '<' + self.__class__.__name__ + ' --> ' + self.thing.__name__ + '>'
+
+    def digest(self, m, k='', maclen=0):
+        """
+        HMAC(key,msg) -> return
+        :type m: str
+        :type k: str
+        :type maclen: int
+        :rtype: str
+        """
+        if callable(self.thing):
+            try:
+                return self.thing(k, m, maclen)
+            except MemoryError:
+                return -1
+        else:
+            hmac = Crypto.Hash.HMAC.new(key=k, digestmod=self.thing)
+            hmac.update(m)
+            retval = hmac.digest()
+            return retval
+
+
+test_messages = [
+    '',
+    'one two three four',
+    'This string is longer than the block size of SHA512 (1024 bits) can accommodate. '
+    'It will require the algorithm to split the message.',
+]
+
+digest_test_map = {
     'SHA256': {
         'OpenSSL SHA-256': Crypto.Hash.SHA256,
         'Cryptoe SHA-256': cryptoe_ext.SHA256,
@@ -58,38 +109,98 @@ test_funcs = {
 }
 
 
-def bytes_as_str(string):
-    """
-    :type string: str
-    """
-    return ' '.join(['%02x' % x for x in bytearray(string)])
-
-
 def resmap(v):
     if v == 1:
         return 'PASS'
-    elif v > 1:
-        return 'MISMATCH DETECTED'
-    elif v < 1:
-        return 'UNEXPECTED LENGTH'
+    elif 0 < v or v > 1:
+        return 'FAIL'
 
 
-if __name__ == '__main__':
-    results = {}
-    fd = {f: [] for f in test_funcs}
-    test_messages = [
-        '',
-        'one two three four',
-        'This string is longer than the block size of SHA512 (1024 bits) can accommodate. '
-        'It will require the algorithm to split the message.',
-    ]
-    print(fd)
+def test_digests():
+    """
+    Verify that our digest functions return identical values to OpenSSL.
+
+    :return: None
+    :rtype: NoneType
+    """
+    fd = {f: [] for f in digest_test_map}
     for m in test_messages:
         for f in fd:
             rv = []
-            for h in test_funcs[f]:
-                dw = DigestWrapper(name=h, thing=test_funcs[f][h])
+            for h in digest_test_map[f]:
+                dw = DigestWrapper(name=h, thing=digest_test_map[f][h])
                 rv.append(dw.digest(m))
             rvl = len(rv)
             rv = list(set(rv))
             print('{0:s} {1:d} {2:d} {3:s}'.format(f, rvl, len(rv), resmap(len(rv))))
+
+
+def test_hmac():
+    """
+    Verify that simple HMAC operation returns identical values to OpenSSL.
+
+    :return: None
+    :rtype: NoneType
+    """
+    print('NOTE: There should be three failures for each MAC, as key sizes > digest_len cannot be used.')
+    hmac_test_map = OrderedDict()
+    hmac_test_map['SHA256'] = {
+        'len': 256,
+        'keys': [
+            cryptoe_ext.rdrand_bytes(16),
+            cryptoe_ext.rdrand_bytes(32),
+            cryptoe_ext.rdrand_bytes(48),
+        ],
+        'funcs': {
+            'OpenSSL HMAC-SHA-256': Crypto.Hash.SHA256,
+            'Cryptoe HMAC-SHA-256': cryptoe_ext.HMAC_SHA256,
+        },
+    }
+    hmac_test_map['SHA384'] = {
+        'len': 384,
+        'keys': [
+            cryptoe_ext.rdrand_bytes(32),
+            cryptoe_ext.rdrand_bytes(48),
+            cryptoe_ext.rdrand_bytes(64),
+        ],
+        'funcs': {
+            'OpenSSL HMAC-SHA-384': Crypto.Hash.SHA384,
+            'Cryptoe HMAC-SHA-384': cryptoe_ext.HMAC_SHA384,
+        },
+    }
+    hmac_test_map['SHA512'] = {
+        'len': 512,
+        'keys': [
+            cryptoe_ext.rdrand_bytes(48),
+            cryptoe_ext.rdrand_bytes(64),
+            cryptoe_ext.rdrand_bytes(72),
+        ],
+        'funcs': {
+            'OpenSSL HMAC-SHA-512': Crypto.Hash.SHA512,
+            'Cryptoe HMAC-SHA-512': cryptoe_ext.HMAC_SHA512,
+        },
+    }
+
+    for a in hmac_test_map:
+        fl = hmac_test_map[a]['funcs']
+        kl = hmac_test_map[a]['keys']
+        l = hmac_test_map[a]['len']
+        for k in kl:
+            for m in test_messages:
+                rv = []
+                for f in fl:
+                    if hasattr(fl[f], '__package__'):
+                        dw = HMACWrapper(fl[f].__name__, fl[f], arg=getattr(Crypto.Hash, a))
+                    else:
+                        dw = HMACWrapper(fl[f].__name__, fl[f], arg=None)
+                    mac = dw.digest(m, k, l/8)
+                    if mac is None:
+                        break
+                    rv.append(mac)
+                rvl = len(rv)
+                rv = list(set(rv))
+                print('HMAC {0:s} {1:d} {2:d} {3:d} {4:s}'.format(a, rvl, len(rv), len(k), resmap(len(rv))))
+
+if __name__ == '__main__':
+    test_digests()
+    test_hmac()

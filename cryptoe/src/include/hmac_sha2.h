@@ -68,30 +68,7 @@
 #define HMAC_SHA2_H
 
 #include <inttypes.h>
-#define SHA256_DIGEST_SIZE ( 256 / 8)
-#define SHA384_DIGEST_SIZE ( 384 / 8)
-#define SHA512_DIGEST_SIZE ( 512 / 8)
-
-#define SHA256_BLOCK_SIZE  ( 512 / 8)
-#define SHA512_BLOCK_SIZE  (1024 / 8)
-#define SHA384_BLOCK_SIZE  SHA512_BLOCK_SIZE
-
-
-typedef struct {
-    unsigned int tot_len;
-    unsigned int len;
-    unsigned char block[2 * SHA256_BLOCK_SIZE];
-    unsigned int h[8];
-} sha256_ctx;
-
-typedef struct {
-    uint64_t tot_len;
-    uint64_t len;
-    unsigned char block[2 * SHA512_BLOCK_SIZE];
-    uint64_t h[8];
-} sha512_ctx;
-
-typedef sha512_ctx sha384_ctx;
+#include "sha2.h"
 
 typedef struct {
     sha256_ctx ctx_inside;
@@ -129,29 +106,6 @@ typedef struct {
     unsigned char block_opad[SHA512_BLOCK_SIZE];
 } hmac_sha512_ctx;
 
-void sha256_init(sha256_ctx * ctx);
-void sha384_init(sha384_ctx *ctx);
-void sha512_init(sha512_ctx *ctx);
-
-void sha256_update(sha256_ctx *ctx, const unsigned char *message,
-                   unsigned int len);
-void sha384_update(sha384_ctx *ctx, const unsigned char *message,
-                   uint64_t len);
-void sha512_update(sha512_ctx *ctx, const unsigned char *message,
-                   uint64_t len);
-
-void sha256_final(sha256_ctx *ctx, unsigned char *digest);
-void sha384_final(sha384_ctx *ctx, unsigned char *digest);
-void sha512_final(sha512_ctx *ctx, unsigned char *digest);
-
-void sha256(const unsigned char *message, unsigned int len,
-            unsigned char *digest);
-void sha384(const unsigned char *message, uint64_t len,
-            unsigned char *digest);
-void sha512(const unsigned char *message, uint64_t len,
-            unsigned char *digest);
-
-
 void hmac_sha256_init(hmac_sha256_ctx *ctx, const unsigned char *key,
                       uint64_t key_size);
 void hmac_sha384_init(hmac_sha384_ctx *ctx, const unsigned char *key,
@@ -188,4 +142,3 @@ void hmac_sha512(const unsigned char *key, uint64_t key_size,
                  unsigned char *mac, uint64_t mac_size);
 
 #endif /* !HMAC_SHA2_H */
-
