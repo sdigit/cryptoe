@@ -1,0 +1,12 @@
++ RNG options:
+  1) CTR-DRBG (per SP800-90A)
+  2) Fortuna
+  3) Yarrow
++ Conditioning (per SP800-90B)
++ Block ciphers:
+  1) AES (via AESNI and via reference implementation)
+  2) Serpent
+  3) Twofish
++ Block cipher modes:
+  1) CBC
+  2) CTR
