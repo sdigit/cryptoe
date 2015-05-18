@@ -14,7 +14,6 @@ __author__ = 'Sean Davis <dive@endersgame.net>'
 
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util import Counter, RFC1751
-from Crypto.Hash import HMAC, SHA256
 from Crypto.Cipher import AES
 import struct
 import cryptoe_ext
@@ -175,7 +174,7 @@ def str_to_key128(words):
     return RFC1751.english_to_key(words)
 
 
-def pw2key(pw, salt=None, digest=SHA256):
+def pw2key(pw, salt=None, prf=cryptoe_ext.HMAC_SHA256):
     """
     This function is a wrapper for purposes of convenience around Crypto.Protocol.KDF.PBKDF2
     PBKDF2 per NIST SP800-132 is used with HMAC-SHA256 as a default. Salt and an alternate digest can be specified.
@@ -183,11 +182,16 @@ def pw2key(pw, salt=None, digest=SHA256):
 
     :param pw: password
     :param salt: salt for PBKDF
-    :param digest:
+    :param prf: pseudo-random function (in this case, HMAC-SHA(256|384|512)
     :return: {'key': key, 'salt': salt}
     :rtype: dict
     """
-    lprf = lambda x, y: HMAC.new(x, msg=y, digestmod=digest).digest()
+    mac_len = {
+        cryptoe_ext.HMAC_SHA256: 32,
+        cryptoe_ext.HMAC_SHA384: 48,
+        cryptoe_ext.HMAC_SHA512: 64,
+    }
+    lprf = lambda k, m: prf(k, m, mac_len[prf])
     if not salt:
         salt = rndbytes(32)
-    return [PBKDF2(pw, salt, dkLen=32, prf=lprf, count=DEFAULT_PBKDF2_ITERATIONS), salt]
+    return [PBKDF2(pw, salt, dkLen=32, count=DEFAULT_PBKDF2_ITERATIONS, prf=lprf), salt]

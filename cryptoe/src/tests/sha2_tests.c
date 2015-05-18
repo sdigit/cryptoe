@@ -34,12 +34,13 @@
 /* FIPS 180-2 Validation tests */
 
 #include <string.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "hmac_sha2.h"
 
 void test(const char *vector, unsigned char *digest,
-          unsigned int digest_size)
+          uint64_t digest_size)
 {
     char output[2 * SHA512_DIGEST_SIZE + 1];
     int i;
@@ -92,7 +93,7 @@ int main(void)
                                     "klfghijklmghijklmnhijklmnoijklmnopjklm"
                                     "nopqklmnopqrlmnopqrsmnopqrstnopqrstu";
     unsigned char *message3;
-    unsigned int message3_len = 1000000;
+    uint64_t message3_len = 1000000;
     unsigned char digest[SHA512_DIGEST_SIZE];
 
     message3 = malloc(message3_len);

@@ -2,10 +2,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 
 void test(const char *vector, unsigned char *digest,
-          unsigned int digest_size)
+          uint64_t digest_size)
 {
     char output[2 * SHA512_DIGEST_SIZE + 1];
     int i;
@@ -78,11 +79,11 @@ int main(void)
 
     unsigned char mac[SHA512_DIGEST_SIZE];
     unsigned char *keys[7];
-    unsigned int keys_len[7] = {20, 4, 20, 25, 20, 131, 131};
-    unsigned int messages2and3_len = 50;
-    unsigned int mac_256_size;
-    unsigned int mac_384_size;
-    unsigned int mac_512_size;
+    uint64_t keys_len[7] = {20, 4, 20, 25, 20, 131, 131};
+    uint64_t messages2and3_len = 50;
+    uint64_t mac_256_size;
+    uint64_t mac_384_size;
+    uint64_t mac_512_size;
     int i;
 
     for (i = 0; i < 7; i++) {

@@ -179,8 +179,8 @@ SHA256(PyObject *self, PyObject *args)
         PyErr_NoMemory();
         return NULL;
     }
+    memset(digest,0,SHA256_DIGEST_SIZE);
     sha256((const unsigned char *)msg,len,(unsigned char *)&digest);
-    memset(msg,0,len);
     retval = PyString_FromStringAndSize((const char *)digest, SHA256_DIGEST_SIZE);
     memset(&digest,0,SHA256_DIGEST_SIZE);
     return retval;
@@ -202,7 +202,6 @@ SHA384(PyObject *self, PyObject *args)
         return NULL;
     }
     sha384((const unsigned char *)msg,len,(unsigned char *)&digest);
-    memset(msg,0,len);
     retval = PyString_FromStringAndSize((const char *)digest, SHA384_DIGEST_SIZE);
     memset(&digest,0,SHA384_DIGEST_SIZE);
     return retval;
@@ -224,7 +223,6 @@ SHA512(PyObject *self, PyObject *args)
         return NULL;
     }
     sha512((const unsigned char *)msg,len,(unsigned char *)&digest);
-    memset(msg,0,len);
     retval = PyString_FromStringAndSize((const char *)digest, SHA512_DIGEST_SIZE);
     memset(&digest,0,SHA512_DIGEST_SIZE);
     return retval;
@@ -261,8 +259,6 @@ HMAC_SHA256(PyObject *self, PyObject *args)
     hmac_sha256((const unsigned char *)key, key_len,
                 (const unsigned char *)msg, msg_len,
                 (unsigned char *)&mac, mac_len);
-    memset(key,0,key_len);
-    memset(msg,0,msg_len);
     retval = PyString_FromStringAndSize((const char *)mac, mac_len);
     memset(&mac,0,SHA256_DIGEST_SIZE);
     return retval;
@@ -294,8 +290,6 @@ HMAC_SHA384(PyObject *self, PyObject *args)
     hmac_sha384((const unsigned char *)key, key_len,
                 (const unsigned char *)msg, msg_len,
                 (unsigned char *)&mac, mac_len);
-    memset(key,0,key_len);
-    memset(msg,0,msg_len);
     retval = PyString_FromStringAndSize((const char *)mac, mac_len);
     memset(&mac,0,SHA384_DIGEST_SIZE);
     return retval;
@@ -328,8 +322,6 @@ HMAC_SHA512(PyObject *self, PyObject *args)
     hmac_sha512((const unsigned char *)key, key_len,
                 (const unsigned char *)msg, msg_len,
                 (unsigned char *)&mac, mac_len);
-    memset(key,0,key_len);
-    memset(msg,0,msg_len);
     retval = PyString_FromStringAndSize((const char *)mac, mac_len);
     memset(&mac,0,SHA512_DIGEST_SIZE);
     return retval;
