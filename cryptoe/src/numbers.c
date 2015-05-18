@@ -37,28 +37,15 @@
 # include <limits.h>
 #endif /* TESTING */
 
-struct cryptoe_value {
-    const char *ct_name;
-    const char *ct_text;
-    unsigned int ct_num;
-};
-
 /* return values */
 
 #define CT_OK           0
 #define CT_WARN         1
 #define CT_FATAL        2
 
-#define CT_RV_OK       { "CT_OK",     "No Error",     0 }
-#define CT_RV_WARN     { "CT_WARN",   "Warning",      1 }
-#define CT_RV_FATAL    { "CT_FATAL",  "Fatal Error",  2 }
-
-#define CT_RETVALS  CT_OK   \
-                    CT_WARN \
-                    CT_FATAL
-
 /* macro functions */
-#define CT_CHECKLEN(l,minlen,maxlen) (l >= minlen && l <= maxlen)
+#define CT_CHECKVAL(a, b)               (a == b)
+#define CT_CHECKLEN(l,minlen,maxlen)    (l >= minlen && l <= maxlen)
 
 int
 u64tobytearray(in, out, len)
@@ -86,7 +73,11 @@ bytearraytou64array(in, out, len)
     uint64_t pos, offset, i;
     pos = offset = i = 0;
 
-    assert(len % 8 == 0);
+    assert(CT_CHECKVAL(len % 8,0));
+    if (!CT_CHECKVAL(len%8,0))
+    {
+        return CT_FATAL;
+    }
 
     for (i=0;i<len/8;i++)
     {
