@@ -116,7 +116,7 @@ def resmap(v):
         return 'FAIL'
 
 
-def test_digests():
+def cryptoe_vs_openssl_digest():
     """
     Verify that our digest functions return identical values to OpenSSL.
 
@@ -132,17 +132,16 @@ def test_digests():
                 rv.append(dw.digest(m))
             rvl = len(rv)
             rv = list(set(rv))
-            print('{0:s} {1:d} {2:d} {3:s}'.format(f, rvl, len(rv), resmap(len(rv))))
+            print('{0:s} {1:s}'.format(f, resmap(len(rv))))
 
 
-def test_hmac():
+def cryptoe_vs_openssl_hmac():
     """
     Verify that simple HMAC operation returns identical values to OpenSSL.
 
     :return: None
     :rtype: NoneType
     """
-    print('NOTE: There should be three failures for each MAC, as key sizes > digest_len cannot be used.')
     hmac_test_map = OrderedDict()
     hmac_test_map['SHA256'] = {
         'len': 256,
@@ -197,10 +196,13 @@ def test_hmac():
                     if mac is None:
                         break
                     rv.append(mac)
-                rvl = len(rv)
                 rv = list(set(rv))
-                print('HMAC {0:s} {1:d} {2:d} {3:d} {4:s}'.format(a, rvl, len(rv), len(k), resmap(len(rv))))
+                if len(k) * 8 > l:
+                    result = resmap(len(rv)) + ' [EXPECTED]'
+                else:
+                    result = resmap(len(rv))
+                print('HMAC {0:s} {1:d} {2:s}'.format(a, len(k), result))
 
 if __name__ == '__main__':
-    test_digests()
-    test_hmac()
+    cryptoe_vs_openssl_digest()
+    cryptoe_vs_openssl_hmac()
