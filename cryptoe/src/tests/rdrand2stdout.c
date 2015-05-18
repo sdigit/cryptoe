@@ -4,6 +4,9 @@
 #include <sys/types.h>
 #include "rdrand.h"
 
+void usage(const char *);
+int main(int,char **);
+
 void usage(name)
     const char *name;
 {
