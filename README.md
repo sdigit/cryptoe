@@ -1,18 +1,38 @@
 ## CRYPTOE ##
 #### A project aiming to offer a full set of cryptographic routines to make implementing crypto in any Python project easy. ####
 
-Unless you plan to develop on this project, it likely won't offer you much -- CTR-KDF, RDRAND, and 
+Cryptoe isn't intended to be useful on its own. It is intended to provide an easily integrated crypto library for use in other projects, with as little dependency on external libraries (eg. OpenSSL) as I can manage.
+When ready for release, this will ship with scripts to validate it against common test vectors. NIST/FIPS will be first.
+
 To install:
 > cd cryptoe && python setup.py install --user
 
-(I don't recommend installing this system-wide yet, as it's still WIP while I merge code out of other projects and clean
-it up)
-
 ### CAVEATS ###
-Due to heavy reliance on Intel RDRAND, this WILL NOT work on a system lacking it.
+1. The first priority of this codebase is correctness of implementation. As such, it has been written to assume certain things about types, compiler behavior, etc.
+2. Chips lacking RDRAND are out of luck until I have the RNG modules ready.
+3. This will not be the fastest implementation of any algorithm it includes, as it's being written for correctness and verifiability rather than performance.
+
+
+### Dependencies ###
+I am trying to keep this list to only what is needed for security.
+- If on a glibc system, you will need libbsd for strlcpy/strlcat and friends.
+- An Intel CPU supporting RDRAND
+- OpenSSL (for now)
+
 
 ### TODO ###
-1. [cryptoe_ext SHA-2 code] Add python unit tests that perform the same operations as the IETF/FIPS selftests
-2. Add unit tests, primarily selftests for the algorithms
-3. Add RNG test results. Right now I have a lot of data from dieharder on RDRAND, as that's why Cryptoe uses it, but for the sake of completeness it should include dieharder tests of all supported RNGs.
-4. Add a generic KMS class for storage of key data and key metadata in a secure manner. This will most likely be done first for sqlite3 and psycopg2.
+1. Add dieharder results for rdrand, both from C (rdrand2stdout.c) and from the python side (cryptoe_ext.rdrand_(32|64|bytes)
+2. Replace the remaining bits currently imported from pycrypto:
+2. - Crypto.Util.(Counter|RFC1751)
+2. - Crypto.Protocol.KDF.PBKDF2
+2. - Crypto.Cipher.AES
+3. Modularize the HMAC code, so (for example) whirlpool can be substituted for an SHA2 algorithm
+4. Add block ciphers:
+4. - Serpent (CBC mode)
+5. Add hashes:
+5. - Whirlpool
+5. - Skein
+5. - SHA-3 (Keccak) once it's finalized
+6. Add PRNGs:
+6. - CTR_DRBG, HMAC_DRBG, HASH_DRBG
+6. - Fortuna
