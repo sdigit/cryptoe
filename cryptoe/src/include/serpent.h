@@ -2,7 +2,7 @@
 // Copyright in this code is held by Dr B. R. Gladman but free direct or
 // derivative use is permitted subject to acknowledgement of its origin.
 // Dr B. R. Gladman                               .   25th January 2000.
-
+#include <inttypes.h>
 typedef struct
 {
     uint32_t l_key[140];

@@ -12,9 +12,10 @@ master cryptoe directory.
 
 __author__ = 'Sean Davis <dive@endersgame.net>'
 
-from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util import Counter, RFC1751
+from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Cipher import AES
+from cryptoe import Random
 import struct
 import cryptoe_ext
 
@@ -60,7 +61,7 @@ def rndbytes(sz):
     :param sz: how many bytes
     :return: bytes
     """
-    return cryptoe_ext.rdrand_bytes(sz)
+    return _rng.read(sz)
 
 
 def ctr_enc(k, msg):
@@ -174,7 +175,7 @@ def str_to_key128(words):
     return RFC1751.english_to_key(words)
 
 
-def pw2key(pw, salt=None, prf=cryptoe_ext.HMAC_SHA256):
+def pw2key(pw, salt=None, prfn=''):
     """
     This function is a wrapper for purposes of convenience around Crypto.Protocol.KDF.PBKDF2
     PBKDF2 per NIST SP800-132 is used with HMAC-SHA256 as a default. Salt and an alternate digest can be specified.
@@ -182,7 +183,7 @@ def pw2key(pw, salt=None, prf=cryptoe_ext.HMAC_SHA256):
 
     :param pw: password
     :param salt: salt for PBKDF
-    :param prf: pseudo-random function (in this case, HMAC-SHA(256|384|512)
+    :param prfn: pseudo-random function (in this case, HMAC-SHA(256|384|512)
     :return: {'key': key, 'salt': salt}
     :rtype: dict
     """
@@ -191,7 +192,19 @@ def pw2key(pw, salt=None, prf=cryptoe_ext.HMAC_SHA256):
         cryptoe_ext.HMAC_SHA384: 48,
         cryptoe_ext.HMAC_SHA512: 64,
     }
+    prf = ''
+    if prfn == 'SHA256':
+        prf = cryptoe_ext.HMAC_SHA256
+    elif prfn == 'SHA384':
+        prf = cryptoe_ext.HMAC_SHA384
+    elif prfn == 'SHA512':
+        prf = cryptoe_ext.HMAC_SHA512
+
     lprf = lambda k, m: prf(k, m, mac_len[prf])
+    print('using prf %s with len %d' % (prfn,mac_len[prf]))
     if not salt:
-        salt = rndbytes(32)
-    return [PBKDF2(pw, salt, dkLen=32, count=DEFAULT_PBKDF2_ITERATIONS, prf=lprf), salt]
+        salt = rndbytes(mac_len[prf])
+    return [PBKDF2(pw, salt, dkLen=mac_len[prf], count=DEFAULT_PBKDF2_ITERATIONS, prf=lprf), salt]
+
+
+_rng = Random.new()

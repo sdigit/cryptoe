@@ -10,3 +10,5 @@ I may have added bugs. I won't make the original authors take credit for those.
 
 2) The SHA-2 and HMAC-SHA-2 implementation comes from (thank you for BSD licensing!):
     https://github.com/ogay/hmac
+
+3) The Fortuna RNG and SHAd256 hash come from pycrypto 2.6.1

@@ -1,5 +1,5 @@
 #!/bin/sh
-PROJ_ROOT="~/storage/projects/cryptoe"
+PROJ_ROOT="$HOME/storage/projects/cryptoe"
 LIB_ROOTS="/opt/cryptoe /b/dive/venv $HOME/.local"
 VENVS="/opt/cryptoe/venv /b/dive/venv/dilligaf-py27"
 
@@ -23,6 +23,7 @@ cleanup()
 
 for v in ${VENVS}
 do
-    . ${v}/bin/activate
-    clean_inst
+    (. ${v}/bin/activate && clean_inst)
 done
+python setup.py clean --all install --user --force
+
