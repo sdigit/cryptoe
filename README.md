@@ -7,6 +7,7 @@ When ready for release, this will ship with scripts to validate it against commo
 To install:
 > cd cryptoe && python setup.py install --user
 
+
 ### CAVEATS ###
 1. The first priority of this codebase is correctness of implementation. As such, it has been written to assume certain things about types, compiler behavior, etc.
 2. Chips lacking RDRAND are out of luck until I have the RNG modules ready.
@@ -21,18 +22,30 @@ I am trying to keep this list to only what is needed for security.
 
 
 ### TODO ###
-1. Add dieharder results for rdrand, both from C (rdrand2stdout.c) and from the python side (cryptoe_ext.rdrand_(32|64|bytes)
+1. Add dieharder results
+1. - rdrand, C: rdrand_get_n_64
+1. - rdrand, C: rdrand_get_n_32
+1. - rdrand, C: rdrand_get_bytes
+1. - rdrand, Python: rdrand_get_n_64
+1. - rdrand, Python: rdrand_get_n_32
+1. - rdrand, Python: rdrand_get_bytes
+1. - ParanoiaRNG: essentially Fortuna, using SHAd256 digests of inputs (so far beats everything else in dieharder, it's slower but not by enough to preclude usage as RNG)
 2. Replace the remaining bits currently imported from pycrypto:
 2. - Crypto.Util.(Counter|RFC1751)
 2. - Crypto.Protocol.KDF.PBKDF2
 2. - Crypto.Cipher.AES
 3. Modularize the HMAC code, so (for example) whirlpool can be substituted for an SHA2 algorithm
 4. Add block ciphers:
-4. - Serpent (CBC mode)
+4. - Serpent (CBC mode) (code is present but not yet exposed via python API)
 5. Add hashes:
 5. - Whirlpool
-5. - Skein
 5. - SHA-3 (Keccak) once it's finalized
-6. Add PRNGs:
-6. - CTR_DRBG, HMAC_DRBG, HASH_DRBG
-6. - Fortuna
+6. RNG
+6. - Use Fortuna seeded by OS
+6. - Add SP800-90A CTR_DRBG where OS doesn't already offer a direct API for it
+6. - Linux (adapt code to use the crypto API for CTR_DRBG and failback to python implementation
+6. - NetBSD PRNG is already CTR_DRBG: we can use that directly.
+6. - FreeBSD (need to check)
+6. - Windows (don't care)
+
+
