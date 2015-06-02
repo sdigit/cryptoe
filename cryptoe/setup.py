@@ -15,7 +15,7 @@ kw = {
     'name': 'cryptoe',
     'author': 'Sean Davis',
     'author_email': 'cryptoe@endersgame.net',
-    'version': '1.5.3a',
+    'version': '1.5.3a0',
     'url': 'https://github.com/sdigit/cryptoe/',
     'description': 'Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
     'packages': [

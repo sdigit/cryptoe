@@ -12,15 +12,15 @@ master cryptoe directory.
 
 __author__ = 'Sean Davis <dive@endersgame.net>'
 
-from Crypto.Util import Counter, RFC1751
-from Crypto.Protocol.KDF import PBKDF2
-from Crypto.Cipher import AES
-from cryptoe import Random
 import struct
 import cryptoe_ext
 
-DEFAULT_PBKDF2_ITERATIONS = 20000
-QUAD = struct.Struct('>Q')
+from Crypto.Util import Counter, RFC1751
+
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Cipher import AES
+
+from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS, QUAD
 
 
 def long2ba(val):
@@ -201,7 +201,6 @@ def pw2key(pw, salt=None, prfn=''):
         prf = cryptoe_ext.HMAC_SHA512
 
     lprf = lambda k, m: prf(k, m, mac_len[prf])
-    print('using prf %s with len %d' % (prfn,mac_len[prf]))
     if not salt:
         salt = rndbytes(mac_len[prf])
     return [PBKDF2(pw, salt, dkLen=mac_len[prf], count=DEFAULT_PBKDF2_ITERATIONS, prf=lprf), salt]

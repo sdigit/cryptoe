@@ -116,11 +116,14 @@ class _ParanoidRNG(object):
         self.closed = False
         self._fa = Crypto.Random.Fortuna.FortunaAccumulator.FortunaAccumulator()
         self._ec = _EntropyCollector(self._fa)
+        self._pid = -1
+        self._osrng = None
         self.reinit()
 
     def reinit(self):
         """Initialize the random number generator and seed it with entropy from
         the operating system.
+        :type self: _ParanoidRNG
         """
 
         # Save the pid (helps ensure that Crypto.Random.atfork() gets called)
@@ -138,9 +141,16 @@ class _ParanoidRNG(object):
         # Note that if this function can be called frequently by an attacker,
         # (and if the bits from OSRNG are insufficiently random) it will weaken
         # Fortuna's ability to resist a state compromise extension attack.
+
+        # noinspection PyProtectedMember
         self._fa._forget_last_reseed()
 
     def close(self):
+        """
+        Close the OS RNG and lose the reference to the Fortuna accumulator
+
+        :type self: _ParanoidRNG
+        """
         self.closed = True
         self._osrng = None
         self._fa = None
@@ -204,10 +214,10 @@ class _LockingParanoidRNG(_ParanoidRNG):
         finally:
             self._lock.release()
 
-    def read(self, bytes):
+    def read(self, nbytes):
         self._lock.acquire()
         try:
-            return _ParanoidRNG.read(self, bytes)
+            return _ParanoidRNG.read(self, nbytes)
         finally:
             self._lock.release()
 
@@ -230,10 +240,10 @@ class RNGFile(object):
         self.closed = True
         self._singleton = None
 
-    def read(self, bytes):
+    def read(self, nbytes):
         if self.closed:
             raise ValueError("I/O operation on closed file")
-        return self._singleton.read(bytes)
+        return self._singleton.read(nbytes)
 
     def flush(self):
         if self.closed:
@@ -256,6 +266,11 @@ def _get_singleton():
 
 
 def new():
+    """
+    Instantiate and return a new (hopefully safe) locking RNG.
+
+    :rtype : _LockingParanoidRNG
+    """
     return RNGFile(_get_singleton())
 
 
