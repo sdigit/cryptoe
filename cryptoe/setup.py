@@ -11,26 +11,24 @@ cryptoe_ext = Extension('cryptoe_ext',
                                  'src/cipher/serpent.c',
                                  'src/cryptoe.c'])
 
-kw = {
-    'name': 'cryptoe',
-    'author': 'Sean Davis',
-    'author_email': 'cryptoe@endersgame.net',
-    'version': '1.5.3a0',
-    'url': 'https://github.com/sdigit/cryptoe/',
-    'description': 'Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
-    'packages': [
+setup(
+    name='cryptoe',
+    author='Sean Davis',
+    author_email='cryptoe@endersgame.net',
+    version='1.5.4y0',
+    url='https://github.com/sdigit/cryptoe/',
+    description='Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
+    packages=[
         'cryptoe',
         'cryptoe.Random',
     ],
-    'py_modules': [
+    py_modules=[
         'cryptoe.utils',
     ],
-    'ext_modules': [
+    ext_modules=[
         cryptoe_ext
     ],
-    'requires': [
+    requires=[
         'Crypto',
-    ],
-}
-
-setup(**kw)
+    ]
+)
