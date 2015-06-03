@@ -86,12 +86,19 @@ typedef struct {
 
 typedef sha512_ctx sha384_ctx;
 
-void sha256_init(sha256_ctx * ctx);
+void sha256_init(sha256_ctx *ctx);
 void sha384_init(sha384_ctx *ctx);
 void sha512_init(sha512_ctx *ctx);
 
+void sha256_transf(sha256_ctx *ctx, const unsigned char *message,
+                   unsigned int block_nb);
+void sha512_transf(sha512_ctx *ctx, const unsigned char *message,
+                   uint64_t block_nb);
+
 void sha256_update(sha256_ctx *ctx, const unsigned char *message,
                    unsigned int len);
+void shad256_update(sha256_ctx *ctx, const unsigned char *message,
+                    unsigned int len);
 void sha384_update(sha384_ctx *ctx, const unsigned char *message,
                    uint64_t len);
 void sha512_update(sha512_ctx *ctx, const unsigned char *message,
