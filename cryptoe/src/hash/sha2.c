@@ -78,24 +78,24 @@
 #define SHA512_F3(x) (ROTR(x,  1) ^ ROTR(x,  8) ^ SHFR(x,  7))
 #define SHA512_F4(x) (ROTR(x, 19) ^ ROTR(x, 61) ^ SHFR(x,  6))
 
-#define UNPACK32(x, str)                      \
-{                                             \
+#define UNPACK32(x, str)                        \
+{                                               \
     *((str) + 3) = (uint8_t) ((x)      );       \
     *((str) + 2) = (uint8_t) ((x) >>  8);       \
     *((str) + 1) = (uint8_t) ((x) >> 16);       \
     *((str) + 0) = (uint8_t) ((x) >> 24);       \
 }
 
-#define PACK32(str, x)                        \
-{                                             \
+#define PACK32(str, x)                              \
+{                                                   \
     *(x) =   ((unsigned int) *((str) + 3)      )    \
            | ((unsigned int) *((str) + 2) <<  8)    \
            | ((unsigned int) *((str) + 1) << 16)    \
            | ((unsigned int) *((str) + 0) << 24);   \
 }
 
-#define UNPACK64(x, str)                      \
-{                                             \
+#define UNPACK64(x, str)                        \
+{                                               \
     *((str) + 7) = (uint8_t) ((x)      );       \
     *((str) + 6) = (uint8_t) ((x) >>  8);       \
     *((str) + 5) = (uint8_t) ((x) >> 16);       \
@@ -106,8 +106,8 @@
     *((str) + 0) = (uint8_t) ((x) >> 56);       \
 }
 
-#define PACK64(str, x)                        \
-{                                             \
+#define PACK64(str, x)                          \
+{                                               \
     *(x) =   ((uint64_t) *((str) + 7)      )    \
            | ((uint64_t) *((str) + 6) <<  8)    \
            | ((uint64_t) *((str) + 5) << 16)    \
