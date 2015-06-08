@@ -97,8 +97,6 @@ void sha512_transf(sha512_ctx *ctx, const unsigned char *message,
 
 void sha256_update(sha256_ctx *ctx, const unsigned char *message,
                    unsigned int len);
-void shad256_update(sha256_ctx *ctx, const unsigned char *message,
-                    unsigned int len);
 void sha384_update(sha384_ctx *ctx, const unsigned char *message,
                    uint64_t len);
 void sha512_update(sha512_ctx *ctx, const unsigned char *message,
