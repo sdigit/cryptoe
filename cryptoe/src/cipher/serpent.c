@@ -448,10 +448,10 @@
 
 // initialise the key schedule from the user supplied key
 
-void serpent_set_key(serpent_ctx *ctx, const u_int8_t in_key[], int key_len)
+void serpent_set_key(serpent_ctx *ctx, const uint8_t in_key[], int key_len)
 {
-    u_int32_t  i,lk,a,b,c,d,e,f,g,h;
-    u_int32_t  t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16;
+    uint32_t  i,lk,a,b,c,d,e,f,g,h;
+    uint32_t  t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16;
 
     if(key_len > 256)
         return;
@@ -460,7 +460,7 @@ void serpent_set_key(serpent_ctx *ctx, const u_int8_t in_key[], int key_len)
 
     while(i < lk)
     {
-        ctx->l_key[i] = htole32(*((const u_int32_t *)(in_key + 4 * i))); i++;
+        ctx->l_key[i] = htole32(*((const uint32_t *)(in_key + 4 * i))); i++;
     }
 
     if(key_len < 256)
@@ -527,16 +527,16 @@ void serpent_set_key(serpent_ctx *ctx, const u_int8_t in_key[], int key_len)
 
 // encrypt a block of text
 
-void serpent_encrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
-             u_int8_t out_blk[])
+void serpent_encrypt(serpent_ctx *ctx, const uint8_t in_blk[],
+             uint8_t out_blk[])
 {
-    u_int32_t  a,b,c,d,e,f,g,h;
-    u_int32_t  t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16;
+    uint32_t  a,b,c,d,e,f,g,h;
+    uint32_t  t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16;
 
-    a = htole32(*((const u_int32_t *)(in_blk     )));
-    b = htole32(*((const u_int32_t *)(in_blk + 4 )));
-    c = htole32(*((const u_int32_t *)(in_blk + 8 )));
-    d = htole32(*((const u_int32_t *)(in_blk + 12)));
+    a = htole32(*((const uint32_t *)(in_blk     )));
+    b = htole32(*((const uint32_t *)(in_blk + 4 )));
+    c = htole32(*((const uint32_t *)(in_blk + 8 )));
+    d = htole32(*((const uint32_t *)(in_blk + 12)));
 
     k_xor( 0,a,b,c,d); sb0(a,b,c,d,e,f,g,h); rot(e,f,g,h);
     k_xor( 1,e,f,g,h); sb1(e,f,g,h,a,b,c,d); rot(a,b,c,d);
@@ -571,24 +571,24 @@ void serpent_encrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
     k_xor(30,a,b,c,d); sb6(a,b,c,d,e,f,g,h); rot(e,f,g,h);
     k_xor(31,e,f,g,h); sb7(e,f,g,h,a,b,c,d); k_xor(32,a,b,c,d);
 
-    *((u_int32_t *)(out_blk     )) = le32toh(a);
-    *((u_int32_t *)(out_blk +  4)) = le32toh(b);
-    *((u_int32_t *)(out_blk +  8)) = le32toh(c);
-    *((u_int32_t *)(out_blk + 12)) = le32toh(d);
+    *((uint32_t *)(out_blk     )) = le32toh(a);
+    *((uint32_t *)(out_blk +  4)) = le32toh(b);
+    *((uint32_t *)(out_blk +  8)) = le32toh(c);
+    *((uint32_t *)(out_blk + 12)) = le32toh(d);
 }
 
 // decrypt a block of text
 
-void serpent_decrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
-             u_int8_t out_blk[])
+void serpent_decrypt(serpent_ctx *ctx, const uint8_t in_blk[],
+             uint8_t out_blk[])
 {
-    u_int32_t  a,b,c,d,e,f,g,h;
-    u_int32_t  t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16;
+    uint32_t  a,b,c,d,e,f,g,h;
+    uint32_t  t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16;
 
-    a = htole32(*((const u_int32_t *)(in_blk     )));
-    b = htole32(*((const u_int32_t *)(in_blk + 4 )));
-    c = htole32(*((const u_int32_t *)(in_blk + 8 )));
-    d = htole32(*((const u_int32_t *)(in_blk + 12)));
+    a = htole32(*((const uint32_t *)(in_blk     )));
+    b = htole32(*((const uint32_t *)(in_blk + 4 )));
+    c = htole32(*((const uint32_t *)(in_blk + 8 )));
+    d = htole32(*((const uint32_t *)(in_blk + 12)));
 
     k_xor(32,a,b,c,d); ib7(a,b,c,d,e,f,g,h); k_xor(31,e,f,g,h);
     irot(e,f,g,h); ib6(e,f,g,h,a,b,c,d); k_xor(30,a,b,c,d);
@@ -623,9 +623,9 @@ void serpent_decrypt(serpent_ctx *ctx, const u_int8_t in_blk[],
     irot(a,b,c,d); ib1(a,b,c,d,e,f,g,h); k_xor( 1,e,f,g,h);
     irot(e,f,g,h); ib0(e,f,g,h,a,b,c,d); k_xor( 0,a,b,c,d);
 
-    *((u_int32_t *)(out_blk     )) = le32toh(a);
-    *((u_int32_t *)(out_blk +  4)) = le32toh(b);
-    *((u_int32_t *)(out_blk +  8)) = le32toh(c);
-    *((u_int32_t *)(out_blk + 12)) = le32toh(d);
+    *((uint32_t *)(out_blk     )) = le32toh(a);
+    *((uint32_t *)(out_blk +  4)) = le32toh(b);
+    *((uint32_t *)(out_blk +  8)) = le32toh(c);
+    *((uint32_t *)(out_blk + 12)) = le32toh(d);
 }
 

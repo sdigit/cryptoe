@@ -36,51 +36,8 @@
 #include "include/rdrand.h"
 
 /*
- * RDRAND code
+ * RDRAND
  */
-static PyObject *
-rdrand32(PyObject *self, PyObject *args)
-{
-    PyObject *item;
-    uint64_t rdrand_arg;
-    int rdrand_ret;
-    uint32_t *data;
-
-    if (!PyArg_ParseTuple(args, "I", &rdrand_arg))
-        return NULL;
-
-    data = (uint32_t *)malloc(sizeof(uint32_t) * rdrand_arg);
-    if (data == NULL)
-    {
-        PyErr_NoMemory();
-        return NULL;
-    }
-
-    rdrand_ret = rdrand_get_n_32(rdrand_arg, data);
-    if (rdrand_ret == RDRAND_NOT_READY)
-    {
-        free(data);
-        PyErr_NoMemory();
-        return NULL;
-    }
-    else if (rdrand_ret == RDRAND_SUCCESS)
-    {
-        PyObject *retval;
-        retval = PyTuple_New(rdrand_arg);
-        uint64_t i;
-        for (i=0;i<rdrand_arg;i++)
-        {
-            item = PyLong_FromUnsignedLong(data[i]);
-            PyTuple_SetItem(retval,i,item);
-        }
-        free(data);
-        return retval;
-    } else {
-        free(data);
-        return NULL;
-    }
-}
-
 static PyObject *
 rdrand64(PyObject *self, PyObject *args)
 {
@@ -332,9 +289,6 @@ HMAC_SHA512(PyObject *self, PyObject *args)
  * Methods implemented by cryptoe for export to Python
  */
 static PyMethodDef cryptoe_ext_methods[] = {
-    {"rdrand_32",
-     rdrand32,METH_VARARGS,
-     "Return 32-bit integers from RDRAND"},
     {"rdrand_64",
      rdrand64,METH_VARARGS,
      "Return 64-bit integers from RDRAND"},

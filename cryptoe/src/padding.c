@@ -24,11 +24,29 @@
  * SUCH DAMAGE.
  */
 
-#ifndef CRYPTOE_H
-#define CRYPTOE_H
-
+#include "cryptoe.h"
 #include <sys/types.h>
-int pad(char *,size_t,size_t);
 
-#endif /* CRYPTOE_H */
+int
+pad(msg,msg_len,padded_len)
+    char *msg;
+    size_t msg_len;
+    size_t padded_len;
+{
+    if (msg_len > padded_len || msg_len <= 0)
+    {
+        return -1;
+    }
+    else if (msg_len == padded_len)
+    {
+        return 0;
+    }
 
+    int pad_len = padded_len - msg_len;
+    size_t pos;
+    for (pos=0;pos<pad_len;pos++)
+    {
+        msg[msg_len+pos] = pos;
+    }
+    return pos;
+}
