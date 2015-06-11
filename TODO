@@ -1,12 +1,5 @@
-+ RNG options:
-  1) CTR-DRBG (per SP800-90A)
-  2) Fortuna
-  3) Yarrow
-+ Conditioning (per SP800-90B)
-+ Block ciphers:
-  1) AES (via AESNI and via reference implementation)
-  2) Serpent
-  3) Twofish
-+ Block cipher modes:
-  1) CBC
-  2) CTR
+* Find or create a replacement for the hkdf library in use now due to it using OpenSSL for SHA2 (NO OPENSSL IN CRYPTOE!)
+* Create Cipher.py, support Serpent and Twofish in addition to AES. Create wrapper API if necessary, but try to use pycrypto's blockalgo if possible
+* Ensure that CTR or CBC can be done with any supported cipher using the same methods with different flags
+* I still want a C or Python implementation of CTR_DRBG, just for the sake of NIST purity
+* Rework test db schema and functions for key storage now that wrapping and derivation is tested
