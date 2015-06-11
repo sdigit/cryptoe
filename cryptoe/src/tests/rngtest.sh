@@ -1,21 +1,29 @@
 #!/bin/bash
+TEST_BLOCK_SIZE=64
+TEST_BITS=5000000
+TEST_BYTES=$((TEST_BITS/8))
+TEST_BLOCKS=$((TEST_BYTES/TEST_BLOCK_SIZE))
+
 CHECKFILES="rdrand2stdout.c ../rng/rdrand.c ../include/rdrand.h"
-for f in ${CHECKFILES}
-do
-    if [ ! -f "$f" ]
+do_build()
+{
+    for f in ${CHECKFILES}
+    do
+        if [ ! -f "$f" ]
+        then
+            echo "This must be run in cryptoe/src/tests"
+            exit 1
+        fi
+    done
+    rm -f rdrand2stdout
+    cc -o rdrand2stdout rdrand2stdout.c -Wall -Wstrict-prototypes ../rng/rdrand.c -I../include
+
+    if [ $? != 0 ]
     then
-        echo "This must be run in cryptoe/src/tests"
+        echo "Failed to build rdrand2stdout"
         exit 1
     fi
-done
-
-cc -o rdrand2stdout rdrand2stdout.c -Wall -Wstrict-prototypes ../rng/rdrand.c -I../include
-
-if [ $? != 0 ]
-then
-    echo "Failed to build rdrand2stdout"
-    exit 1
-fi
+}
 
 which dieharder > /dev/null 2>&1
 
@@ -25,16 +33,9 @@ then
     exit 1
 fi
 
-# test rdrand_get_n_32, rdrand_get_n_64, and rdrand_get_bytes
-RDRAND_ARGS="32 64 bytes"
-CHUNK_SIZE=32 # 32 bytes per chunk, since 256 bits is a useful amount
-for arg in ${RDRAND_ARGS}
+for arg in 1 2 3
 do
-    TS=$(date +"%s.%n")
-    OUTFILE="dieharder-RDRAND-${arg}x${CHUNK_SIZE}-${TS}.txt"
-    ./rdrand2stdout ${arg} ${CHUNK_SIZE} | \
-    dieharder -g 200 -a | \
-    tee ${OUTFILE}
-    fgrep WEAK ${OUTFILE} > weak-${CHUNK_SIZE}.txt
+    ./rdrand2stdout ${arg} | \
+    dieharder -a -k 2 2>&1 | tee /tmp/dieharder-${arg}.out
 done
 

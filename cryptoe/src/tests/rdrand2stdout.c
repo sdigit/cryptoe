@@ -5,14 +5,54 @@
 #include <sys/types.h>
 #include "rdrand.h"
 
-void usage(const char *);
+void usage(char *);
+void rdrand_out_64(void);
+void rdrand_out_n_64(void);
+void rdrand_out_bytes(void);
 int main(int,char **);
 
-void usage(name)
-    const char *name;
+void
+usage(name)
+    char *name;
 {
-    fprintf(stderr,"usage: %s <32|64|bytes> <number per call>\n",name);
-    exit(1);
+    printf("Usage: %s <1|2|3>\n\n",name);
+    printf("1 = rdrand_64\n");
+    printf("2 = rdrand_get_n_64\n");
+    printf("3 = rdrand_get_bytes\n");
+    exit(0);
+}
+
+void
+rdrand_out_64()
+{
+    uint64_t r;
+    while(1)
+    {
+        rdrand_64(&r,1);
+        write(1,&r,8);
+    }
+}
+
+void
+rdrand_out_n_64()
+{
+    uint64_t r[8];
+    while(1)
+    {
+        rdrand_get_n_64(8,r);
+        write(1,(char *)r,64);
+    }
+}
+
+void
+rdrand_out_bytes()
+{
+    unsigned char r[8];
+    while(1)
+    {
+        rdrand_get_bytes(8,r);
+        write(1,(char *)r,8);
+    }
 }
 
 int
@@ -20,62 +60,24 @@ main(argc,argv)
     int argc;
     char **argv;
 {
-    unsigned long int flag;
-    unsigned long int num;
-
-    if (argc != 3)
+    unsigned long flag = 0;
+    if (argc != 2)
         usage(argv[0]);
     flag = strtoul(argv[1],NULL,10);
-    num = strtoul(argv[2],NULL,10);
-    if (num < 0)
+    if (flag < 1 || flag > 3)
         usage(argv[0]);
 
-    if (flag == 32)
+    switch(flag)
     {
-        uint32_t *r;
-        r = (uint32_t *)malloc(num);
-        if (r == NULL)
-        {
-            exit(1);
-        }
-        while (1)
-        {
-            memset(r,0,num);
-            rdrand_get_n_32(num,r);
-            write(1,r,num);
-            fsync(1);
-        }
-    }
-    else if (flag == 64)
-    {
-        uint64_t *r;
-        r = (uint64_t *)malloc(num);
-        if (r == NULL)
-        {
-            exit(1);
-        }
-        while (1)
-        {
-            memset(r,0,num);
-            rdrand_get_n_64(num,r);
-            write(1,r,num);
-            fsync(1);
-        }
-    }
-    else if (!strncmp(argv[1],"bytes",5))
-    {
-        unsigned char *r;
-        r = (unsigned char *)malloc(num);
-        if (r == NULL)
-        {
-            exit(1);
-        }
-        while (1)
-        {
-            memset(r,0,num);
-            rdrand_get_bytes(num,r);
-            write(1,r,num);
-        }
+        case 1:
+            rdrand_out_64();
+            break;
+        case 2:
+            rdrand_out_n_64();
+            break;
+        case 3:
+            rdrand_out_bytes();
+            break;
     }
     exit(0);
 }
