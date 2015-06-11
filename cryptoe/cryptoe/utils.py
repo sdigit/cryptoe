@@ -13,14 +13,11 @@ master cryptoe directory.
 __author__ = 'Sean Davis <dive@endersgame.net>'
 
 import struct
-import cryptoe_ext
 
-from Crypto.Util import Counter, RFC1751
-
-from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Util import Counter
 from Crypto.Cipher import AES
 
-from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS, QUAD
+from cryptoe import Random, QUAD
 
 
 def long2ba(val):
@@ -58,6 +55,7 @@ def ba2long(val):
 def rndbytes(sz):
     """
     Return sz random bytes
+    :type sz: int
     :param sz: how many bytes
     :return: bytes
     """
@@ -127,7 +125,6 @@ def aes_unwrap_key_withpad(kek, wrapped):
     return key[:key_len]
 
 
-# noinspection PyTypeChecker
 def aes_wrap_key(kek, plaintext, iv=0xa6a6a6a6a6a6a6a6):
     n = len(plaintext) / 8
     R = [None] + [plaintext[i * 8:i * 8 + 8] for i in range(0, n)]
@@ -135,9 +132,11 @@ def aes_wrap_key(kek, plaintext, iv=0xa6a6a6a6a6a6a6a6):
     encrypt = AES.new(kek).encrypt
     for j in range(6):
         for i in range(1, n + 1):
+            # noinspection PyTypeChecker
             B = encrypt(QUAD.pack(A) + R[i])
             A = QUAD.unpack(B[:8])[0] ^ (n * j + i)
             R[i] = B[8:]
+    # noinspection PyTypeChecker
     return QUAD.pack(A) + "".join(R[1:])
 
 
@@ -145,65 +144,6 @@ def aes_wrap_key_withpad(kek, plaintext):
     iv = 0xA65959A600000000 + len(plaintext)
     plaintext += "\0" * (8 - len(plaintext) % 8)
     return aes_wrap_key(kek, plaintext, iv)
-
-
-def key128_to_str(key):
-    """
-    Convert 128-bit key (bytes or int) to RFC1751 format
-    :param key: bytes or int containing 128 bits to be converted to words
-    :rtype: str
-    :return: RFC1751 words
-    """
-    if isinstance(key, int):
-        return RFC1751.key_to_english(bytes(key))
-    elif isinstance(key, bytes):
-        return RFC1751.key_to_english(key)
-    else:
-        raise TypeError('expected int or bytes')
-
-
-def str_to_key128(words):
-    """
-    Convert RFC1751 encoded key to bytes
-    :param words: the words
-    :type words: str
-    :return: bytes
-    :rtype: bytes
-    """
-    if not isinstance(words, str):
-        raise TypeError('expected string')
-    return RFC1751.english_to_key(words)
-
-
-def pw2key(pw, salt=None, prfn=''):
-    """
-    This function is a wrapper for purposes of convenience around Crypto.Protocol.KDF.PBKDF2
-    PBKDF2 per NIST SP800-132 is used with HMAC-SHA256 as a default. Salt and an alternate digest can be specified.
-    A list containing the derived key and the salt is returned.
-
-    :param pw: password
-    :param salt: salt for PBKDF
-    :param prfn: pseudo-random function (in this case, HMAC-SHA(256|384|512)
-    :return: {'key': key, 'salt': salt}
-    :rtype: dict
-    """
-    mac_len = {
-        cryptoe_ext.HMAC_SHA256: 32,
-        cryptoe_ext.HMAC_SHA384: 48,
-        cryptoe_ext.HMAC_SHA512: 64,
-    }
-    prf = ''
-    if prfn == 'SHA256':
-        prf = cryptoe_ext.HMAC_SHA256
-    elif prfn == 'SHA384':
-        prf = cryptoe_ext.HMAC_SHA384
-    elif prfn == 'SHA512':
-        prf = cryptoe_ext.HMAC_SHA512
-
-    lprf = lambda k, m: prf(k, m, mac_len[prf])
-    if not salt:
-        salt = rndbytes(mac_len[prf])
-    return [PBKDF2(pw, salt, dkLen=mac_len[prf], count=DEFAULT_PBKDF2_ITERATIONS, prf=lprf), salt]
 
 
 _rng = Random.new()
