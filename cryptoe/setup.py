@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
-from distutils.core import setup, Extension
 import os
+from distutils.core import setup, Extension
 
 cryptoe_ext = Extension('cryptoe_ext',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
@@ -15,7 +15,7 @@ setup(
     name='cryptoe',
     author='Sean Davis',
     author_email='cryptoe@endersgame.net',
-    version='1.5.4y0',
+    version='1.6.1a',
     url='https://github.com/sdigit/cryptoe/',
     description='Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
     packages=[
@@ -29,6 +29,6 @@ setup(
         cryptoe_ext
     ],
     requires=[
-        'Crypto',
+        'Crypto', 'hkdf',
     ]
 )
