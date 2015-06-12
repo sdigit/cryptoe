@@ -35,7 +35,7 @@ from math import floor, ceil
 from Crypto.Hash import HMAC, SHA512
 from Crypto.Random import OSRNG
 
-import Crypto.Random.Fortuna
+from Crypto.Random.Fortuna import FortunaAccumulator
 
 
 class _EntropySource(object):
@@ -59,7 +59,6 @@ class _EntropyCollector(object):
         self._rdrand_es = _EntropySource(accumulator, 254)
         self._time_es = _EntropySource(accumulator, 253)
         self._clock_es = _EntropySource(accumulator, 252)
-        self._hmac_es = _EntropySource(accumulator, 251)
 
     def reinit(self):
         # force RDRAND to reseed
@@ -114,7 +113,7 @@ class _EntropyCollector(object):
 class _ParanoidRNG(object):
     def __init__(self):
         self.closed = False
-        self._fa = Crypto.Random.Fortuna.FortunaAccumulator.FortunaAccumulator()
+        self._fa = FortunaAccumulator.FortunaAccumulator()
         self._ec = _EntropyCollector(self._fa)
         self._pid = -1
         self._osrng = None
@@ -158,20 +157,20 @@ class _ParanoidRNG(object):
     def flush(self):
         pass
 
-    def read(self, N):
+    def read(self, n):
         """Return N bytes from the RNG."""
         if self.closed:
             raise ValueError("I/O operation on closed file")
-        if not isinstance(N, (long, int)):
+        if not isinstance(n, (long, int)):
             raise TypeError("an integer is required")
-        if N < 0:
+        if n < 0:
             raise ValueError("cannot read to end of infinite stream")
 
         # Collect some entropy and feed it to Fortuna
         self._ec.collect()
 
         # Ask Fortuna to generate some bytes
-        retval = self._fa.random_data(N)
+        retval = self._fa.random_data(n)
 
         # Check that we haven't forked in the meantime.  (If we have, we don't
         # want to use the data, because it might have been duplicated in the

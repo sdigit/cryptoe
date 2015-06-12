@@ -87,9 +87,7 @@ int rdrand_get_bytes(unsigned int n, unsigned char *dest)
     residual = count % sizeof(uint64_t);
     length = count/sizeof(uint64_t);
     if (residual != 0)
-    {
         residualstart = (unsigned char *)(blockstart + length);
-    }
 
     /* Get a temporary random number for use in the residuals. Failout if retry fails */
     if (startlen > 0)
@@ -118,7 +116,6 @@ int rdrand_get_bytes(unsigned int n, unsigned char *dest)
         {
             residualstart[i] = (unsigned char)(temprand & 0xff);
             temprand = temprand >> 8;
-
         }
         temprand = 0;
     }

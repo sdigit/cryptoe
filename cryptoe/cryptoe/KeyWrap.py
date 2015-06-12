@@ -33,18 +33,18 @@ class KWP(KeyWrapAlgorithm):
 
 def unwrap_key_and_iv(kek, wrapped):
     n = len(wrapped) / 8 - 1
-    R = [None] + [wrapped[i * 8:i * 8 + 8] for i in range(1, n + 1)]
-    A = QUAD.unpack(wrapped[:8])[0]
+    r = [None] + [wrapped[i * 8:i * 8 + 8] for i in range(1, n + 1)]
+    a = QUAD.unpack(wrapped[:8])[0]
     decrypt = AES.new(kek).decrypt
     for j in range(5, -1, -1):
         for i in range(n, 0, -1):
             # noinspection PyTypeChecker
-            ciphertext = QUAD.pack(A ^ (n * j + i)) + R[i]
-            B = decrypt(ciphertext)
-            A = QUAD.unpack(B[:8])[0]
-            R[i] = B[8:]
+            ciphertext = QUAD.pack(a ^ (n * j + i)) + r[i]
+            cb = decrypt(ciphertext)
+            a = QUAD.unpack(cb[:8])[0]
+            r[i] = cb[8:]
     # noinspection PyTypeChecker
-    return "".join(R[1:]), A
+    return "".join(r[1:]), a
 
 
 def unwrap_key(kek, wrapped, iv=0xa6a6a6a6a6a6a6a6):
@@ -65,17 +65,17 @@ def unwrap_key_withpad(kek, wrapped):
 
 def wrap_key(kek, plaintext, iv=0xa6a6a6a6a6a6a6a6):
     n = len(plaintext) / 8
-    R = [None] + [plaintext[i * 8:i * 8 + 8] for i in range(0, n)]
-    A = iv
+    r = [None] + [plaintext[i * 8:i * 8 + 8] for i in range(0, n)]
+    a = iv
     encrypt = AES.new(kek).encrypt
     for j in range(6):
         for i in range(1, n + 1):
             # noinspection PyTypeChecker
-            B = encrypt(QUAD.pack(A) + R[i])
-            A = QUAD.unpack(B[:8])[0] ^ (n * j + i)
-            R[i] = B[8:]
+            cb = encrypt(QUAD.pack(a) + r[i])
+            a = QUAD.unpack(cb[:8])[0] ^ (n * j + i)
+            r[i] = cb[8:]
     # noinspection PyTypeChecker
-    return QUAD.pack(A) + "".join(R[1:])
+    return QUAD.pack(a) + "".join(r[1:])
 
 
 def wrap_key_withpad(kek, plaintext):

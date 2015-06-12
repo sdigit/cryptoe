@@ -43,12 +43,12 @@ def long2ba(val):
     :param val: a long integer
     :return: bytearray
     """
-    B = bytearray()
+    b = bytearray()
     n = abs(val)
     while n > 0:
-        B += struct.pack('<B', n % 256)
+        b += struct.pack('<B', n % 256)
         n >>= 8
-    return bytearray(reversed(B))
+    return bytearray(reversed(b))
 
 
 def ba2long(val):
@@ -58,14 +58,14 @@ def ba2long(val):
     :param val: a bytearray
     :return: long
     """
-    N = 0
+    n = 0
     for b in val:
-        N <<= 8
+        n <<= 8
         if type(b) == int:
-            N += b
+            n += b
         elif type(b) == str:
-            N += ord(b)
-    return long(N)
+            n += ord(b)
+    return long(n)
 
 
 def rndbytes(sz):

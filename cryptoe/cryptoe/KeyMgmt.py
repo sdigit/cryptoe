@@ -1,25 +1,28 @@
 from collections import OrderedDict
+from math import floor, ceil
+import os
 import struct
 
-from Crypto.Hash import HMAC, SHA512
+from Crypto.Hash import HMAC, SHA512, SHA256
 from Crypto.Protocol.KDF import PBKDF2
-from sqlalchemy import create_engine, Column, Integer, String, Binary
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 import hkdf
 
 from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS
+from cryptoe.exceptions import DerivationError
+import time
 
-KEY_SRC_RAND = 0
-KEY_SRC_PBKDF = 1
-KEY_SRC_HKDF = 2
+KEY_SRC_NONE = 0
+KEY_SRC_RAND = 1
+KEY_SRC_PBKDF = 2
+KEY_SRC_HKDF = 4
 
-KEY_USE_ROOT = 0
-KEY_USE_DERIVATION = 1
-KEY_USE_HMAC = 2
-KEY_USE_ENCRYPTION = 4
-KEY_USE_WRAPPING = 8
-KEY_USE_IV_SEED = 16
+KEY_USE_NONE = 0
+KEY_USE_ROOT = 1
+KEY_USE_DERIVATION = 2
+KEY_USE_HMAC = 4
+KEY_USE_ENCRYPTION = 8
+KEY_USE_WRAPPING = 16
+KEY_USE_IV_SEED = 32
 
 KEY_ALG_NONE = 0
 KEY_ALG_CIPHER = 1
@@ -32,7 +35,9 @@ KEY_ALG_HMAC_SHA384 = 64
 KEY_ALG_HMAC_SHA512 = 128
 
 PRF_NONE = 0
-PRF_HMAC_SHA512 = 1
+PRF_HMAC_SHA256 = 1
+PRF_HMAC_SHA384 = 2
+PRF_HMAC_SHA512 = 4
 
 KEY_INFO_SRC = OrderedDict({
     KEY_SRC_RAND: 'Fortuna',
@@ -66,131 +71,38 @@ KEY_INFO_ALG = OrderedDict({
     KEY_ALG_HMAC_SHA512: 'SHA-512',
 })
 
-KEY_INFO_SIZE = 64
+
+def gather_easy_entropy(size=256):
+    assert (size == 256 or size == 128)
+    hm = HMAC.new('\x00' * (size / 8), digestmod=SHA256)  # Avoid extension attacks
+    # 64 bits from time
+    tm = time.time()
+    hm.update(struct.pack('!L', int(2 ** 30 * (tm - floor(tm)))))
+    hm.update(struct.pack('!L', int(ceil(tm))))
+    del tm
+    # 32 from clock
+    ck = time.clock()
+    hm.update(struct.pack('!L', int(2 ** 30 * (ck - floor(ck)))))
+    del ck
+    # 32 from PID * PPID
+    pp = (os.getpid() * os.getppid()) % (2 ** 32 - 1)
+    hm.update(struct.pack('!L', pp))
+    del pp
+    return hm.digest()[:size / 8]
 
 
-class KeyInfo(object):
+def generate_key(size=256):
     """
-    Binary string representation of label and context for HKDF
-    +---+---+---+----+---+---+---+---+----+
-    |use|usr|num|RSVD|pad|lvl|src|prf|RSVD|
-    | 2 | 16| 2 |  8 | 1 | 1 | 1 | 1 |  8 |
-    +---+---+---+----+---+---+---+---+----+
+    Generate a key suitable for cryptographic use per NIST SP800-133
+
+    :return: key
     """
-    fmt = '!H16sHQxBBBQ'
-    ki_struct = struct.Struct(fmt)
-
-    @staticmethod
-    def encode(use, usr, num, lvl, src, prf):
-        """
-        Pack given values into a KeyInfo bytearray
-        """
-        buf = bytearray(40)
-        KeyInfo.ki_struct.pack_into(buf, 0, use, usr, num, 0, lvl, src, prf, 0)
-        return buf
-
-    @staticmethod
-    def decode(buf):
-        """
-        Unpack the specified buffer, extracting the label and context values
-
-        Binary string representation of label and context for HKDF
-
-        |use|usr|num|pad|lvl|src|prf|
-        | 2 | 16| 2 | 1 | 1 | 1 | 1 |
-        """
-        return KeyInfo.ki_struct.unpack_from(buf)
-
-
-class CryptoKeyError(Exception):
-    """Main class for Key-related errors"""
-
-
-class NoKey(CryptoKeyError):
-    """Key not set"""
-
-
-class ImmutableError(CryptoKeyError):
-    """Key already set"""
-
-
-class DerivationError(CryptoKeyError):
-    """A derived key did not pass checks"""
-
-
-Base = declarative_base()
-engine = None
-Session = None
-session = None
-
-
-class Key(Base):
-    __tablename__ = 'keys'
-    id = Column(Integer, primary_key=True)
-    bits = Column(Integer)
-    lvl = Column(Integer)
-    src = Column(Integer)
-    salt = Column(Binary)
-    subkeys = Column(Integer)
-    parent = Column(Integer)
-    info = Column(String)
-
-    def __init__(self):
-        self._key = ''
-        self.salt = ''
-        self.subkeys = 0
-        self.parent = 0
-
-    @property
-    def key(self):
-        if self.key == '':
-            raise NoKey('key is not set')
-        else:
-            return self.key
-
-    @key.setter
-    def key(self, data):
-        assert (type(data) == str)
-        if self.key != '':
-            raise ImmutableError('Key data already set')
-        assert (self.key == '')
-        self.key = data
-
-    @info.setter
-    def info(self, data):
-        assert (type(data) == str)
-        if self._info != '':
-            raise ImmutableError('Key info already set')
-        self.info = data
-
-    def DeriveKey(self, info, hkdf_salt='', dklen=32):
-        """
-        Derive a subkey of the current key using HKDF. Add it to the subkeys list.
-        If no salt is specified, use a random salt of the same length as the current key.
-
-        Returns a list in the form of [Key object,salt]
-
-        :param info: key info (used for key derivation)
-        :param hkdf_salt: Random hkdf_salt for HKDF expansion
-        :param dklen: length of derived key
-        :type info: str
-        :type hkdf_salt: str
-        :type dklen: int
-        """
-        if dklen < 16 or dklen > 1024:
-            raise DerivationError('Requested key must be between 16 and 1024 bytes')
-        if hkdf_salt == '':
-            hkdf_salt = Random.new().read(dklen)
-        prk = hkdf.hkdf_extract(hkdf_salt, self._key)
-        k = Key()
-        k.bits = dklen * 8
-        k.info = info
-        k.key = hkdf.hkdf_expand(prk, info=info, length=dklen)
-        k.lvl = self.lvl + 1
-        k.src = KEY_SRC_HKDF
-        self.subkeys += 1
-        k.parent = self.id
-        return k
+    assert (size == 256 or size == 128)
+    rbg = Random.new()
+    u = rbg.read(size / 8)
+    v = gather_easy_entropy(size)
+    k = ''.join(map(chr, map(lambda x: ord(x[0]) ^ ord(x[1]), zip(u, v))))
+    return k
 
 
 def create_mk(pw, salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, dklen=32):
@@ -206,6 +118,7 @@ def create_mk(pw, salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, dklen=32):
     :type salt: str
     :type rounds: int
     :type dklen: int
+    :rtype: MasterKey
     """
     if dklen < 16 or dklen > 1024:
         raise DerivationError('Requested key must be between 16 and 1024 bytes')
@@ -218,20 +131,26 @@ def create_mk(pw, salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, dklen=32):
 
     prf = lambda k, s: HMAC.new(k, s, SHA512).digest()
 
-    mk = Key()
-    mk.bits = dklen * 8
-    mk.info = 'PBKDF2,%d,%d,%s[%d,%d]' % (dklen * 8, rounds, SHA512.__name__, SHA512.block_size, SHA512.digest_size)
-    mk.lvl = 0
-    mk.src = KEY_SRC_PBKDF
-    mk.key = PBKDF2(pw, kdf_salt, dkLen=dklen, count=rounds, prf=prf)
-    mk.salt = kdf_salt
-    return mk
+    key = PBKDF2(pw, kdf_salt, dkLen=dklen, count=rounds, prf=prf)
+    return [key, salt]
 
 
-def dbinit(dbpath):
-    global engine
-    global Session
-    global session
-    engine = create_engine('sqlite:///' + str(dbpath))
-    Session = sessionmaker(engine)
-    session = Session()
+def create_dk(key, dklen=32, kdf_info='', hkdf_salt=''):
+    """
+    Derive a subkey of the current key using HKDF. Add it to the subkeys list.
+    If no salt is specified, use a random salt of the same length as the current key.
+
+    Returns a list in the form of [Key object,salt]
+
+    :param hkdf_salt: Random hkdf_salt for HKDF expansion
+    :param dklen: length of derived key
+    :type hkdf_salt: str
+    :type dklen: int
+    """
+    if dklen < 16 or dklen > 1024:
+        raise DerivationError('Requested key must be between 16 and 1024 bytes')
+    if hkdf_salt == '':
+        hkdf_salt = Random.new().read(dklen)
+    prk = hkdf.hkdf_extract(hkdf_salt, key.get_key())
+    dk = hkdf.hkdf_expand(prk, info=kdf_info, length=dklen)
+    return dk
