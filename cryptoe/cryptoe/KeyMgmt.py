@@ -1,74 +1,75 @@
+from collections import OrderedDict
+import struct
+
 from Crypto.Hash import HMAC, SHA512
 from Crypto.Protocol.KDF import PBKDF2
-from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS
-from collections import OrderedDict
-from binascii import hexlify
 from sqlalchemy import create_engine, Column, Integer, String, Binary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import struct
 import hkdf
 
+from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS
 
-KEY_SRC_RAND        = 0
-KEY_SRC_PBKDF       = 1
-KEY_SRC_HKDF        = 2
+KEY_SRC_RAND = 0
+KEY_SRC_PBKDF = 1
+KEY_SRC_HKDF = 2
 
-KEY_USE_ROOT        = 0
-KEY_USE_DERIVATION  = 1
-KEY_USE_HMAC        = 2
-KEY_USE_ENCRYPTION  = 4
-KEY_USE_WRAPPING    = 8
-KEY_USE_IV_SEED     = 16
+KEY_USE_ROOT = 0
+KEY_USE_DERIVATION = 1
+KEY_USE_HMAC = 2
+KEY_USE_ENCRYPTION = 4
+KEY_USE_WRAPPING = 8
+KEY_USE_IV_SEED = 16
 
-KEY_ALG_NONE        = 0
-KEY_ALG_CIPHER      = 1
-KEY_ALG_MAC         = 2
-KEY_ALG_BLK_AES     = 4
+KEY_ALG_NONE = 0
+KEY_ALG_CIPHER = 1
+KEY_ALG_MAC = 2
+KEY_ALG_BLK_AES = 4
 KEY_ALG_BLK_TWOFISH = 8
 KEY_ALG_BLK_SERPENT = 16
 KEY_ALG_HMAC_SHA256 = 32
 KEY_ALG_HMAC_SHA384 = 64
 KEY_ALG_HMAC_SHA512 = 128
 
-PRF_NONE            = 0
-PRF_HMAC_SHA512     = 1
+PRF_NONE = 0
+PRF_HMAC_SHA512 = 1
 
 KEY_INFO_SRC = OrderedDict({
-    KEY_SRC_RAND:   'Fortuna',
-    KEY_SRC_PBKDF:  'PBKDF2',
-    KEY_SRC_HKDF:   'HKDF',
+    KEY_SRC_RAND: 'Fortuna',
+    KEY_SRC_PBKDF: 'PBKDF2',
+    KEY_SRC_HKDF: 'HKDF',
 })
 
 KEY_INFO_USE = OrderedDict({
-    KEY_USE_ROOT:       'Master Key',
+    KEY_USE_ROOT: 'Master Key',
     KEY_USE_DERIVATION: 'Key Derivation Key',
-    KEY_USE_HMAC:       'Message Digest Key',
+    KEY_USE_HMAC: 'Message Digest Key',
     KEY_USE_ENCRYPTION: 'Symmetric Cipher Key',
-    KEY_USE_WRAPPING:   'Key Encryption Key',
-    KEY_USE_IV_SEED:    'IV Generation Key',
+    KEY_USE_WRAPPING: 'Key Encryption Key',
+    KEY_USE_IV_SEED: 'IV Generation Key',
 })
 
 KEY_INFO_PRF = OrderedDict({
-    PRF_NONE:           'No PRF used',
-    PRF_HMAC_SHA512:    'PRF was HMAC-SHA512',
-});
-
-KEY_INFO_ALG = OrderedDict({
-	KEY_ALG_NONE:		    'Algorithm unspecified or not applicable',
-	KEY_ALG_CIPHER:		    'Symmetric Cipher',
-	KEY_ALG_MAC:		    'Keyed Message Authentication',
-	KEY_ALG_BLK_AES:		'Advanced Encryption Standard',
-	KEY_ALG_BLK_TWOFISH:	'Twofish',
-	KEY_ALG_BLK_SERPENT:	'Serpent',
-	KEY_ALG_HMAC_SHA256:	'SHA-256',
-	KEY_ALG_HMAC_SHA384:	'SHA-384',
-	KEY_ALG_HMAC_SHA512:	'SHA-512',
+    PRF_NONE: 'No PRF used',
+    PRF_HMAC_SHA512: 'PRF was HMAC-SHA512',
 })
 
-KEY_INFO_SIZE   = 64
+KEY_INFO_ALG = OrderedDict({
+    KEY_ALG_NONE: 'Algorithm unspecified or not applicable',
+    KEY_ALG_CIPHER: 'Symmetric Cipher',
+    KEY_ALG_MAC: 'Keyed Message Authentication',
+    KEY_ALG_BLK_AES: 'Advanced Encryption Standard',
+    KEY_ALG_BLK_TWOFISH: 'Twofish',
+    KEY_ALG_BLK_SERPENT: 'Serpent',
+    KEY_ALG_HMAC_SHA256: 'SHA-256',
+    KEY_ALG_HMAC_SHA384: 'SHA-384',
+    KEY_ALG_HMAC_SHA512: 'SHA-512',
+})
 
-class KeyInfo:
+KEY_INFO_SIZE = 64
+
+
+class KeyInfo(object):
     """
     Binary string representation of label and context for HKDF
     +---+---+---+----+---+---+---+---+----+
@@ -76,16 +77,16 @@ class KeyInfo:
     | 2 | 16| 2 |  8 | 1 | 1 | 1 | 1 |  8 |
     +---+---+---+----+---+---+---+---+----+
     """
-    fmt  = '!H16sHQxBBBQ'
+    fmt = '!H16sHQxBBBQ'
     ki_struct = struct.Struct(fmt)
 
     @staticmethod
-    def encode(use,usr,num,lvl,src,prf):
+    def encode(use, usr, num, lvl, src, prf):
         """
         Pack given values into a KeyInfo bytearray
         """
         buf = bytearray(40)
-        KeyInfo.ki_struct.pack_into(buf,0,use,usr,num,0,lvl,src,prf,0)
+        KeyInfo.ki_struct.pack_into(buf, 0, use, usr, num, 0, lvl, src, prf, 0)
         return buf
 
     @staticmethod
@@ -125,21 +126,20 @@ session = None
 
 class Key(Base):
     __tablename__ = 'keys'
-    id      = Column(Integer,primary_key=True)
-    bits    = Column(Integer)
-    lvl     = Column(Integer)
-    src     = Column(Integer)
-    salt    = Column(Binary)
+    id = Column(Integer, primary_key=True)
+    bits = Column(Integer)
+    lvl = Column(Integer)
+    src = Column(Integer)
+    salt = Column(Binary)
     subkeys = Column(Integer)
-    parent  = Column(Integer)
-    info    = Column(String)
+    parent = Column(Integer)
+    info = Column(String)
 
     def __init__(self):
         self._key = ''
         self.salt = ''
         self.subkeys = 0
         self.parent = 0
-
 
     @property
     def key(self):
@@ -162,7 +162,6 @@ class Key(Base):
         if self._info != '':
             raise ImmutableError('Key info already set')
         self.info = data
-
 
     def DeriveKey(self, info, hkdf_salt='', dklen=32):
         """
@@ -200,17 +199,16 @@ def create_mk(pw, salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, dklen=32):
     Return a list in the form of [Key object,salt]
 
     :param pw: password or passphrase
-    :param kdf_salt: salt for PBKDF2 (if not specified, will be generated randomly)
+    :param salt: salt for PBKDF2 (if not specified, will be generated randomly)
     :param rounds: number of iterations of the PRF
     :param dklen: desired key length in bytes
     :type pw: str
-    :type kdf_salt: str
+    :type salt: str
     :type rounds: int
     :type dklen: int
     """
     if dklen < 16 or dklen > 1024:
         raise DerivationError('Requested key must be between 16 and 1024 bytes')
-    kdf_salt = ''
     if salt == '':
         kdf_salt = Random.new().read(64)
     elif len(salt) < 16:
@@ -222,7 +220,6 @@ def create_mk(pw, salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, dklen=32):
 
     mk = Key()
     mk.bits = dklen * 8
-    prf_name = 'HMAC-SHA512'
     mk.info = 'PBKDF2,%d,%d,%s[%d,%d]' % (dklen * 8, rounds, SHA512.__name__, SHA512.block_size, SHA512.digest_size)
     mk.lvl = 0
     mk.src = KEY_SRC_PBKDF
@@ -235,7 +232,6 @@ def dbinit(dbpath):
     global engine
     global Session
     global session
-    engine = create_engine('sqlite:///'+str(dbpath))
+    engine = create_engine('sqlite:///' + str(dbpath))
     Session = sessionmaker(engine)
     session = Session()
-    

@@ -29,6 +29,6 @@ setup(
         cryptoe_ext
     ],
     requires=[
-        'Crypto', 'hkdf',
+        'Crypto', 'hkdf', 'sqlalchemy',
     ]
 )
