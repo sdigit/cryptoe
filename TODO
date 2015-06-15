@@ -1,5 +1,13 @@
-* Find or create a replacement for the hkdf library in use now due to it using OpenSSL for SHA2 (NO OPENSSL IN CRYPTOE!)
-* Create Cipher.py, support Serpent and Twofish in addition to AES. Create wrapper API if necessary, but try to use pycrypto's blockalgo if possible
-* Ensure that CTR or CBC can be done with any supported cipher using the same methods with different flags
-* I still want a C or Python implementation of CTR_DRBG, just for the sake of NIST purity
-* Rework test db schema and functions for key storage now that wrapping and derivation is tested
+* Find or create a replacement for the hkdf library in use now due to it using OpenSSL for SHA2
+* Derive a MAC key from PBKDF2 output, use it for integrity checking of salts
+* Now that the basic key database works, extend it to store cipher metadata (bytes encrypted with a key, times a key has been used)
+* Have the DB initialization also derive a seed value for IVs, and store IVs used in encrypted form
+
+* Cipher support:
+ * Add interface for data encryption, namely files and arbitrary strings.
+  * Start with (Cipher)-CBC and/or (Cipher)-CTR for confidentiality with HMAC-SHA256 for authentication
+  * Once that works, add GCM (and once GCM is tested, use GCM by default)
+
+* KMS API:
+ * Tie into Linux kernel keystore support for private keys
+ * Create a class for requesting a key from the keystore

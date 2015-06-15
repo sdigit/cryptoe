@@ -5,10 +5,6 @@ you do not wish for it to be included in a BSD licensed work, please let me know
 
 I may have added bugs. I won't make the original authors take credit for those.
 
-1) The AES Key Wrap code in utils.py was first found here:
-    https://gist.github.com/doublereedkurt/4243633
-
-2) The SHA-2 and HMAC-SHA-2 implementation comes from (thank you for BSD licensing!):
-    https://github.com/ogay/hmac
-
-3) The Fortuna RNG and SHAd256 hash come from pycrypto 2.6.1
+1) The AES Key Wrap code in utils.py was first found here: https://gist.github.com/doublereedkurt/4243633
+2) PyCrypto
+3) RDRAND support is pulled from Intel's RDRAND library, with one change: clearing of the temporary random value in rdrand_get_bytes
