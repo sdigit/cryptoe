@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from math import floor, ceil
 import os
 import struct
@@ -12,69 +11,8 @@ import hkdf
 from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS
 from cryptoe.exceptions import DerivationError
 
-KEY_SRC_NONE = 0
-KEY_SRC_RAND = 1
-KEY_SRC_PBKDF = 2
-KEY_SRC_HKDF = 4
+DEFAULT_PRF_HASH = SHA512
 
-KEY_USE_NONE = 0
-KEY_USE_ROOT = 1
-KEY_USE_DERIVATION = 2
-KEY_USE_HMAC = 4
-KEY_USE_ENCRYPTION = 8
-KEY_USE_WRAPPING = 16
-KEY_USE_IV_SEED = 32
-
-KEY_ALG_NONE = 0
-KEY_ALG_OTHER = 1
-KEY_ALG_CIPHER = 2
-KEY_ALG_MAC = 4
-KEY_ALG_BLK_AES = 8
-KEY_ALG_BLK_TWOFISH = 16
-KEY_ALG_BLK_SERPENT = 32
-KEY_ALG_HMAC_SHA256 = 64
-KEY_ALG_HMAC_SHA384 = 128
-KEY_ALG_HMAC_SHA512 = 256
-
-PRF_NONE = 0
-PRF_HMAC_SHA256 = 1
-PRF_HMAC_SHA384 = 2
-PRF_HMAC_SHA512 = 4
-
-KEY_INFO_SRC = OrderedDict({
-    KEY_SRC_RAND: 'Fortuna',
-    KEY_SRC_PBKDF: 'PBKDF2',
-    KEY_SRC_HKDF: 'HKDF',
-})
-
-KEY_INFO_USE = OrderedDict({
-    KEY_USE_ROOT: 'Master Key',
-    KEY_USE_DERIVATION: 'Key Derivation Key',
-    KEY_USE_HMAC: 'Keyed-Hash Message Authentication Code [HMAC]',
-    KEY_USE_ENCRYPTION: 'Symmetric Cipher Key',
-    KEY_USE_WRAPPING: 'Key Encryption Key',
-    KEY_USE_IV_SEED: 'IV Generation Key',
-})
-
-KEY_INFO_PRF = OrderedDict({
-    PRF_NONE: 'No PRF used',
-    PRF_HMAC_SHA512: 'PRF was HMAC-SHA512',
-})
-
-KEY_INFO_ALG = OrderedDict({
-    KEY_ALG_NONE: 'Algorithm unspecified or not applicable',
-    KEY_ALG_CIPHER: 'Symmetric Cipher',
-    KEY_ALG_MAC: 'Keyed Message Authentication',
-    KEY_ALG_BLK_AES: 'Advanced Encryption Standard',
-    KEY_ALG_BLK_TWOFISH: 'Twofish',
-    KEY_ALG_BLK_SERPENT: 'Serpent',
-    KEY_ALG_HMAC_SHA256: 'SHA-256',
-    KEY_ALG_HMAC_SHA384: 'SHA-384',
-    KEY_ALG_HMAC_SHA512: 'SHA-512',
-})
-
-KEY_INFO_USRID_LEN = 104 / 8
-KEY_INFO_APPID_LEN = 104 / 8
 
 # pack_hkdf_info and unpack_hkdf_info encode and decode the otherinfo data used by the extraction step of HKDF.
 #
@@ -129,7 +67,7 @@ KEY_INFO_APPID_LEN = 104 / 8
 #
 #
 # With both RFC5869 and SP800-56C in mind, we construct our info field as follows:
-# label (31 bytes) + 0x00 + context (31 bytes)
+# label (31 bytes) + 0x00 + context (32 bytes)
 #
 # The final info bit string is packed in big-endian byte order.
 #
@@ -139,49 +77,34 @@ KEY_INFO_APPID_LEN = 104 / 8
 # ---------------------------------
 # [248 bits]    LABEL
 # ---------------------------------
-# [  8 bits]    len     length of the final binary string LABEL in bytes
-# [ 16 bits]    use     bitwise OR of KEY_USE_HMAC and any other relevant KEY_USE_* values
-# [ 16 bits]    alg     bitwise OR of all relevant KEY_ALG_* values (KEY_ALG_OTHER if none apply)
-# [128 bits]    desc    optional freeform text description
-# [ 64 bits]    rsvd    unused, reserved for future use
-# [ 16 bits]    tag     the integer 1984 shifted left by 4 bits (31744)
+# [  8 bits]    len     length of the following string in bytes
+# [240 bits]    txt     string identifying the purpose of the derived keying material
 # ---------------------------------
 # [  8 bits] zero byte (to separate label and context per SP800-56C)
 # ---------------------------------
 # [256 bits] CONTEXT
 # ---------------------------------
 # [  8 bits]    len     length of the final binary string CONTEXT in bytes
-# [104 bits]    usrid   user identifier
-# [104 bits]    appid   application identifier
-# [ 24 bits]    rsvd    unused, reserved for future use
-# [ 16 bits]    tag     the integer 1975 shifted left by 4 bits (31600)
+# [248 bits]    txt     string describing what/who will use the derived keying material
 
 
-def pack_hkdf_info(use, alg, user, desc):
-    assert (isinstance(use, int))
-    assert (isinstance(alg, int))
-    assert (isinstance(user, str))
-    assert (isinstance(desc, str))
-    assert (len(user) <= 104 * 8)
-    assert (use & KEY_USE_HMAC)
-    label_struct = struct.Struct('>BHH16s8xH')
-    context_struct = struct.Struct('>B13s13s3xH')
+def pack_hkdf_info(label, context):
+    label_struct = struct.Struct('>B30s')
+    context_struct = struct.Struct('>B31s')
     buf = bytearray(64)
     LABEL_LEN = 31
-    LABEL_TAG = 1984 << 4
-    CONTEXT_TAG = 1975 << 4
     CONTEXT_LEN = 32
-    label_struct.pack_into(buf, 0, LABEL_LEN, use, alg, desc, LABEL_TAG)
+    label_struct.pack_into(buf, 0, LABEL_LEN, str(label))
     struct.pack_into('>B', buf, 31, 0x00)
-    context_struct.pack_into(buf, 32, CONTEXT_LEN, user, 'cryptoe', CONTEXT_TAG)
+    context_struct.pack_into(buf, 32, CONTEXT_LEN, str(context))
     return buf
 
 
 def unpack_hkdf_info(buf):
     if (len(buf)) != 64:
-        print('len(buf) != 64: %d' % len(buf))
-    label_struct = struct.Struct('>BHH16s8xH')
-    context_struct = struct.Struct('>B13s13s3xH')
+        raise DerivationError('HKDF info of unexpected length; cannot unpack with normal format.')
+    label_struct = struct.Struct('>B30s')
+    context_struct = struct.Struct('>B31s')
     vals = {
         'label': label_struct.unpack_from(buf, 0),
         'context': context_struct.unpack_from(buf, 32),
@@ -189,8 +112,7 @@ def unpack_hkdf_info(buf):
     return vals
 
 
-def gather_easy_entropy(size=256):
-    assert (size == 256 or size == 128)
+def gather_easy_entropy(size):
     hm = HMAC.new('\x00' * (size / 8), digestmod=SHA256)  # Avoid extension attacks
     # 64 bits from time
     tm = time.time()
@@ -205,73 +127,92 @@ def gather_easy_entropy(size=256):
     pp = (os.getpid() * os.getppid()) % (2 ** 32 - 1)
     hm.update(struct.pack('!L', pp))
     del pp
-    return hm.digest()[:size / 8]
+    return hm.digest()[:size]
 
 
-def generate_key(size=256):
+def newkey_rnd(klen=32):
     """
     Generate a key suitable for cryptographic use per NIST SP800-133
 
     :return: key
     """
-    assert (size == 256 or size == 128)
+    assert(klen > 0)
+    assert(klen % 8 == 0)
     rbg = Random.new()
-    u = rbg.read(size / 8)
-    v = gather_easy_entropy(size)
+    u = rbg.read(klen)
+    v = gather_easy_entropy(klen)
     k = ''.join(map(chr, map(lambda x: ord(x[0]) ^ ord(x[1]), zip(u, v))))
     return k
 
 
-def create_mk(pw, salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, dklen=32):
+def newkey_pbkdf(klen=32, k_in='', salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, prf=None):
     """
     Create a master key from user input, using PBKDF2.
     Return a list in the form of [Key object,salt]
 
-    :param pw: password or passphrase
-    :param salt: salt for PBKDF2 (if not specified, will be generated randomly)
+    :param klen: desired key length in bytes
+    :param k_in: password or passphrase
     :param rounds: number of iterations of the PRF
-    :param dklen: desired key length in bytes
-    :type pw: str
-    :type salt: str
+    :type klen: int
+    :type k_in: str
     :type rounds: int
-    :type dklen: int
-    :rtype: MasterKey
     """
-    if dklen < 16 or dklen > 1024:
-        raise DerivationError('Requested key must be between 16 and 1024 bytes')
-    if salt == '':
-        kdf_salt = Random.new().read(64)
-    elif len(salt) < 16:
-        raise RuntimeError('salt smaller than minimum')
-    else:
-        kdf_salt = salt
+    assert(klen > 0)
+    assert(klen % 8 == 0)
+    if not prf:
+        prf = lambda x, y: HMAC.new(x, y, SHA512).digest()
 
-    prf = lambda k, s: HMAC.new(k, s, SHA512).digest()
-
-    key = PBKDF2(pw, kdf_salt, dkLen=dklen, count=rounds, prf=prf)
-    return {'key': key, 'salt': salt}
+    k = PBKDF2(k_in, salt, dkLen=klen, count=rounds, prf=prf)
+    return k
 
 
-def create_dk(key, dklen=32, kdf_info='', hkdf_salt=''):
+def newkey_hkdf(klen=32, k_in='', salt='', otherinfo=''):
     """
     Derive a subkey of the current key using HKDF. Add it to the subkeys list.
     If no salt is specified, use a random salt of the same length as the current key.
 
     Returns a list in the form of [Key object,salt]
 
-    :param hkdf_salt: Random hkdf_salt for HKDF expansion
-    :param dklen: length of derived key
-    :type hkdf_salt: str
-    :type dklen: int
+    :param klen: length of derived key in bytes
+    :param k_in: input key from which to derive new key
+    :param salt: Random hkdf_salt for HKDF expansion
+    :param otherinfo: HKDF OtherInfo from pack_hkdf_info
+    :type klen: int
+    :type k_in: str
+    :type salt: str
+    :type otherinfo: bytearray
     """
-    if dklen < 16 or dklen > 1024:
-        raise DerivationError('Requested key must be between 16 and 1024 bytes')
-    if hkdf_salt == '':
-        hkdf_salt = Random.new().read(dklen)
-    prk = hkdf.hkdf_extract(hkdf_salt, key)
-    dk = hkdf.hkdf_expand(prk, info=kdf_info, length=dklen)
-    return dk
+    assert(klen > 0)
+    assert(klen % 8 == 0)
+    if len(otherinfo) != 64:
+        raise DerivationError('otherinfo supplied is not of expected length')
+    if salt == '':
+        rbg = Random.new()
+        salt = rbg.read(klen / 8)
+    elif len(salt) != klen:
+        raise RuntimeError('salt length mismatch')
+    prk = hkdf.hkdf_extract(salt, k_in)
+    k = hkdf.hkdf_expand(prk, info=otherinfo, length=klen)
+    return k
 
 
-def key_hash(key):
-    return SHA256.new(key).hexdigest()
+def SHAd256(msg):
+    """
+    SHAd256 implementation for digesting something all at once (because Crypto.Random.Fortuna.SHAd256 isn't correct)
+    :param msg: message to hash
+    """
+    sha = SHA256.new()
+    sha.update('\x00'*64)
+    sha.update(msg)
+    return sha.digest()
+
+
+def SHAd256_HEX(msg):
+    """
+    SHAd256 implementation for digesting something all at once (because Crypto.Random.Fortuna.SHAd256 isn't correct)
+    :param msg: message to hash
+    """
+    sha = SHA256.new()
+    sha.update('\x00'*64)
+    sha.update(msg)
+    return sha.hexdigest()
