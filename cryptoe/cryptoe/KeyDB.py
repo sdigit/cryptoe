@@ -1,15 +1,15 @@
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy import create_engine, Column, Integer, String, Binary, DateTime, ForeignKey, \
     func
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
+
 from sqlalchemy.orm.exc import NoResultFound
 
-from KeyWrap import KW
-from cryptoe import Random, YUBIKEY_HMAC_CR_SLOT
-from cryptoe.KeyMgmt import newkey_pbkdf, newkey_hkdf, pack_hkdf_info, newkey_rnd, \
-    DEFAULT_PRF_HASH, SHAd256_HEX
-from cryptoe.exceptions import KeyLengthError, SaltLengthError
+from cryptoe.KeyWrap import KW
+from cryptoe.KeyMgmt import newkey_pbkdf, newkey_hkdf, pack_hkdf_info, DEFAULT_PRF_HASH, SHAd256_HEX, new_random_key, \
+    new_salt, new_derived_key
+from cryptoe.exceptions import KeyLengthError
 from cryptoe.utils import yubikey_passphrase_cr
 
 KEYDB_USER = 'KeyDB'
@@ -61,70 +61,6 @@ class Key(Base):
         return pack_hkdf_info(self.purpose, self.user)
 
 
-def new_random_key(maker, kek, purpose, user, klen=32):
-    session = maker()
-    no_salt = session.query(Salt).filter_by(salt='').first()
-    if len(no_salt.salt) != 0:
-        raise SaltLengthError('Salt length for new_random_key should be 0')
-    k = Key()
-    k.bits = klen * 8
-    k.purpose = purpose
-    k.user = user
-    k.salt_id = no_salt.id
-    k_actual = newkey_rnd(klen)
-    if len(k_actual) != klen:
-        raise KeyLengthError('Key returned by newkey_rnd does not match requested length (%d != %d)' % (len(k_actual),
-                                                                                                        klen))
-    k.key = KW.wrap(kek, k_actual)
-    k_hash = SHAd256_HEX(k_actual)
-    k.hash_shad256 = k_hash
-    k.related_hash = SHAd256_HEX(kek)
-    session.add(k)
-    session.commit()
-    session.close()
-    return [k_actual, k_hash]
-
-
-def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
-    session = maker()
-    k = Key()
-    k.bits = klen * 8
-    k.purpose = purpose
-    k_salt = new_salt(session, klen)
-    if len(k_salt.salt) != klen:
-        raise SaltLengthError('HKDF salt must be the same length as the derivation key')
-    k.salt_id = k_salt.id
-    k.user = user
-    k_actual = newkey_hkdf(klen, kdk, k_salt.salt, pack_hkdf_info(k.purpose, k.user))
-    if len(k_actual) != klen:
-        raise KeyLengthError('HKDF returned a key with an incorrect length (%d != %d)' % (len(k_actual),
-                                                                                          klen))
-    if kek == '':
-        k.key = ''
-    else:
-        k.key = KW.wrap(kek, k_actual)
-    k.related_hash = SHAd256_HEX(kdk)
-    k_hash = SHAd256_HEX(k_actual)
-    k.hash_shad256 = k_hash
-    session.add(k)
-    session.commit()
-    session.close()
-    return [k_actual, k_hash]
-
-
-def new_salt(db_session, slen):
-    rbg = Random.new()
-    s = Salt()
-    s.salt = rbg.read(slen)
-    salt = s.salt
-    db_session.add(s)
-    db_session.commit()
-    s = db_session.query(Salt).filter_by(salt=salt).first()
-    assert (s.salt == salt)
-    del salt
-    return s
-
-
 def init_keys(maker):
     from getpass import getpass
 
@@ -132,12 +68,12 @@ def init_keys(maker):
     session = maker()
     passphrase = ''
     while not passphrase_ready:
-        passphrase = getpass('Master Passphrase: ').rstrip()
+        passphrase = getpass('passphrase: ').rstrip()
         if len(passphrase) < KEYDB_PASSPHRASE_LENGTH:
             print('Passphrase is too short.')
             continue
         else:
-            confirm = getpass('Confirm Master Passphrase: ').rstrip()
+            confirm = getpass('passphrase (confirm): ').rstrip()
             if confirm == passphrase:
                 passphrase_ready = 1
     del passphrase_ready
@@ -152,7 +88,6 @@ def init_keys(maker):
     mk.prf_hash = DEFAULT_PRF_HASH.__name__.split('.')[-1]
     mk.rounds = roundcount
     mk.salt_id = mk_salt.id
-    print('Generating database master key from provided passphrase.')
     print('Using PBKDF2 with %d rounds of %s' % (roundcount, mk.prf_hash))
 
     mk_key = newkey_pbkdf(klen, passphrase, mk_salt.salt, roundcount)

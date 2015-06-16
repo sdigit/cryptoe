@@ -6,10 +6,12 @@ import time
 from Crypto.Hash import HMAC, SHA512, SHA256
 
 from Crypto.Protocol.KDF import PBKDF2
+from cryptoe.KeyWrap import KW
+from cryptoe.KeyDB import Key, Salt
 import hkdf
 
 from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS, MINIMUM_PBKDF2_ITERATIONS
-from cryptoe.exceptions import DerivationError, LowIterationCount
+from cryptoe.exceptions import DerivationError, LowIterationCount, SaltLengthError, KeyLengthError
 
 DEFAULT_PRF_HASH = SHA512
 
@@ -220,3 +222,67 @@ def SHAd256_HEX(msg):
     sha.update('\x00' * 64)
     sha.update(msg)
     return sha.hexdigest()
+
+
+def new_random_key(maker, kek, purpose, user, klen=32):
+    session = maker()
+    no_salt = session.query(Salt).filter_by(salt='').first()
+    if len(no_salt.salt) != 0:
+        raise SaltLengthError('Salt length for new_random_key should be 0')
+    k = Key()
+    k.bits = klen * 8
+    k.purpose = purpose
+    k.user = user
+    k.salt_id = no_salt.id
+    k_actual = newkey_rnd(klen)
+    if len(k_actual) != klen:
+        raise KeyLengthError('Key returned by newkey_rnd does not match requested length (%d != %d)' % (len(k_actual),
+                                                                                                        klen))
+    k.key = KW.wrap(kek, k_actual)
+    k_hash = SHAd256_HEX(k_actual)
+    k.hash_shad256 = k_hash
+    k.related_hash = SHAd256_HEX(kek)
+    session.add(k)
+    session.commit()
+    session.close()
+    return [k_actual, k_hash]
+
+
+def new_salt(db_session, slen):
+    rbg = Random.new()
+    s = Salt()
+    s.salt = rbg.read(slen)
+    salt = s.salt
+    db_session.add(s)
+    db_session.commit()
+    s = db_session.query(Salt).filter_by(salt=salt).first()
+    assert (s.salt == salt)
+    del salt
+    return s
+
+
+def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
+    session = maker()
+    k = Key()
+    k.bits = klen * 8
+    k.purpose = purpose
+    k_salt = new_salt(session, klen)
+    if len(k_salt.salt) != klen:
+        raise SaltLengthError('HKDF salt must be the same length as the derivation key')
+    k.salt_id = k_salt.id
+    k.user = user
+    k_actual = newkey_hkdf(klen, kdk, k_salt.salt, pack_hkdf_info(k.purpose, k.user))
+    if len(k_actual) != klen:
+        raise KeyLengthError('HKDF returned a key with an incorrect length (%d != %d)' % (len(k_actual),
+                                                                                          klen))
+    if kek == '':
+        k.key = ''
+    else:
+        k.key = KW.wrap(kek, k_actual)
+    k.related_hash = SHAd256_HEX(kdk)
+    k_hash = SHAd256_HEX(k_actual)
+    k.hash_shad256 = k_hash
+    session.add(k)
+    session.commit()
+    session.close()
+    return [k_actual, k_hash]
