@@ -118,20 +118,19 @@ def yubikey_passphrase_cr(passphrase):
         yubico = None
     if not yubico:
         del yubico
-        print('[YubiKey] yubico module not found. using passphrase directly.')
         return passphrase
     try:
         yubikey = yubico.find_yubikey()
     except yubico.yubikey.YubiKeyError:
-        print('[YubiKey] yubikey not found. using passphrase directly.')
         return passphrase
     if yubikey:
         challenge = SHAd256_HEX(passphrase)
         print('[YubiKey] Sending challenge')
         try:
             response = yubikey.challenge_response(challenge, slot=YUBIKEY_HMAC_CR_SLOT)
+            print('[YubiKey] Got response')
         except yubico.yubikey.YubiKeyTimeout:
-            print('[YubiKey] timeout waiting for response to challenge.')
+            print('[YubiKey] Timeout. Not using Yubikey.')
             return passphrase
         passphrase = response
     return passphrase
