@@ -8,8 +8,8 @@ from Crypto.Hash import HMAC, SHA512, SHA256
 from Crypto.Protocol.KDF import PBKDF2
 import hkdf
 
-from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS
-from cryptoe.exceptions import DerivationError
+from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS, MINIMUM_PBKDF2_ITERATIONS
+from cryptoe.exceptions import DerivationError, LowIterationCount
 
 DEFAULT_PRF_HASH = SHA512
 
@@ -105,9 +105,11 @@ def unpack_hkdf_info(buf):
         raise DerivationError('HKDF info of unexpected length; cannot unpack with normal format.')
     label_struct = struct.Struct('>B30s')
     context_struct = struct.Struct('>B31s')
+    l = label_struct.unpack_from(buf, 0)
+    c = context_struct.unpack_from(buf, 32)
     vals = {
-        'label': label_struct.unpack_from(buf, 0),
-        'context': context_struct.unpack_from(buf, 32),
+        'label': l[1].rstrip(),
+        'context': c[1].rstrip(),
     }
     return vals
 
@@ -136,8 +138,8 @@ def newkey_rnd(klen=32):
 
     :return: key
     """
-    assert(klen > 0)
-    assert(klen % 8 == 0)
+    assert (klen > 0)
+    assert (klen % 8 == 0)
     rbg = Random.new()
     u = rbg.read(klen)
     v = gather_easy_entropy(klen)
@@ -157,8 +159,10 @@ def newkey_pbkdf(klen=32, k_in='', salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, pr
     :type k_in: str
     :type rounds: int
     """
-    assert(klen > 0)
-    assert(klen % 8 == 0)
+    assert (klen > 0)
+    assert (klen % 8 == 0)
+    if rounds < MINIMUM_PBKDF2_ITERATIONS:
+        raise LowIterationCount('PBKDF2 should use >= %d iterations' % MINIMUM_PBKDF2_ITERATIONS)
     if not prf:
         prf = lambda x, y: HMAC.new(x, y, SHA512).digest()
 
@@ -182,8 +186,8 @@ def newkey_hkdf(klen=32, k_in='', salt='', otherinfo=''):
     :type salt: str
     :type otherinfo: bytearray
     """
-    assert(klen > 0)
-    assert(klen % 8 == 0)
+    assert (klen > 0)
+    assert (klen % 8 == 0)
     if len(otherinfo) != 64:
         raise DerivationError('otherinfo supplied is not of expected length')
     if salt == '':
@@ -202,7 +206,7 @@ def SHAd256(msg):
     :param msg: message to hash
     """
     sha = SHA256.new()
-    sha.update('\x00'*64)
+    sha.update('\x00' * 64)
     sha.update(msg)
     return sha.digest()
 
@@ -213,6 +217,6 @@ def SHAd256_HEX(msg):
     :param msg: message to hash
     """
     sha = SHA256.new()
-    sha.update('\x00'*64)
+    sha.update('\x00' * 64)
     sha.update(msg)
     return sha.hexdigest()
