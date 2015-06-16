@@ -129,7 +129,7 @@ def yubikey_passphrase_cr(passphrase):
         challenge = SHAd256_HEX(passphrase)
         print('[YubiKey] Sending challenge')
         try:
-            response = yubikey.challenge_response(challenge, slot=KEYDB_YUBIKEY_CR_SLOT)
+            response = yubikey.challenge_response(challenge, slot=YUBIKEY_HMAC_CR_SLOT)
         except yubico.yubikey.YubiKeyTimeout:
             print('[YubiKey] timeout waiting for response to challenge.')
             return passphrase
