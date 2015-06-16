@@ -9,6 +9,8 @@ was written.
 For a complete list of which documents the cryptoe package implements in whole or in part, see the REFS file in the
 master cryptoe directory.
 """
+from KeyDB import KEYDB_YUBIKEY_CR_SLOT
+from KeyMgmt import SHAd256_HEX
 
 __author__ = 'Sean Davis <dive@endersgame.net>'
 
@@ -108,6 +110,32 @@ def ctr_dec(k, msg):
     del ctr
     del aes
     return ct
+
+
+def yubikey_passphrase_cr(passphrase):
+    try:
+        import yubico
+    except ImportError:
+        yubico = None
+    if not yubico:
+        del yubico
+        print('[YubiKey] yubico module not found. using passphrase directly.')
+        return passphrase
+    try:
+        yubikey = yubico.find_yubikey()
+    except yubico.yubikey.YubiKeyError:
+        print('[YubiKey] yubikey not found. using passphrase directly.')
+        return passphrase
+    if yubikey:
+        challenge = SHAd256_HEX(passphrase)
+        print('[YubiKey] Sending challenge')
+        try:
+            response = yubikey.challenge_response(challenge, slot=KEYDB_YUBIKEY_CR_SLOT)
+        except yubico.yubikey.YubiKeyTimeout:
+            print('[YubiKey] timeout waiting for response to challenge.')
+            return passphrase
+        passphrase = response
+    return passphrase
 
 
 _rng = Random.new()
