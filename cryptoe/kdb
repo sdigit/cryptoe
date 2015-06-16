@@ -44,8 +44,8 @@ if __name__ == '__main__':
         usage()
     elif sys.argv[1] not in command_map:
         usage()
-    cmd = argv[1]
-    dbu = argv[2]
+    cmd = sys.argv[1]
+    dbu = sys.argv[2]
     if dbu.find('://') == -1 or not (dbu.startswith('sqlite') and not dbu.startswith('postgresql')):
         func = globals()[command_map[sys.argv[1]][0]]
         func(dbu)
