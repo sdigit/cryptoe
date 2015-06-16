@@ -207,7 +207,7 @@ def SHAd256(msg):
     sha = SHA256.new()
     sha.update('\x00' * 64)
     sha.update(msg)
-    return sha.digest()
+    return SHA256.new(sha.digest()).digest()
 
 
 def SHAd256_HEX(msg):
@@ -218,4 +218,4 @@ def SHAd256_HEX(msg):
     sha = SHA256.new()
     sha.update('\x00' * 64)
     sha.update(msg)
-    return sha.hexdigest()
+    return SHA256.new(sha.digest()).hexdigest()
