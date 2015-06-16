@@ -9,8 +9,8 @@ was written.
 For a complete list of which documents the cryptoe package implements in whole or in part, see the REFS file in the
 master cryptoe directory.
 """
-from KeyDB import KEYDB_YUBIKEY_CR_SLOT
-from KeyMgmt import SHAd256_HEX
+from cryptoe.KeyDB import KEYDB_YUBIKEY_CR_SLOT
+from cryptoe.KeyMgmt import SHAd256_HEX
 
 __author__ = 'Sean Davis <dive@endersgame.net>'
 
