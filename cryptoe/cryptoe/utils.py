@@ -15,26 +15,7 @@ __author__ = 'Sean Davis <dive@endersgame.net>'
 
 import struct
 
-from Crypto.Util import Counter
-from Crypto.Cipher import AES
-
-from cryptoe import Random, YUBIKEY_HMAC_CR_SLOT
-
-
-def pad(what, size):
-    if len(what) > size:
-        raise ValueError('length exceeds desired padded length')
-    elif len(what) == size:
-        return what
-    wlen = len(what)
-    plen = size - wlen
-    out = struct.pack('<s', what)
-    pad_bytes = [struct.pack('B', _) for _ in xrange(0, plen)]
-    out += ''.join(pad_bytes)
-    del pad_bytes
-    del wlen
-    del plen
-    return out
+from cryptoe import YUBIKEY_HMAC_CR_SLOT
 
 
 def long2ba(val):
@@ -52,63 +33,21 @@ def long2ba(val):
     return bytearray(reversed(b))
 
 
-def ba2long(val):
-    """
-    Convert a bytearray into a long integer
-
-    :param val: a bytearray
-    :return: long
-    """
-    n = 0
-    for b in val:
-        n <<= 8
-        if type(b) == int:
-            n += b
-        elif type(b) == str:
-            n += ord(b)
-    return long(n)
-
-
-def rndbytes(sz):
-    """
-    Return sz random bytes
-    :type sz: int
-    :param sz: how many bytes
-    :return: bytes
-    """
-    return _rng.read(sz)
-
-
-def ctr_enc(k, msg):
-    """
-    AES256 in CTR mode (Encrypt)
-
-    :param k: Key
-    :param msg: Plaintext
-    :return: Ciphertext
-    """
-    ctr = Counter.new(128)
-    aes = AES.new(k, AES.MODE_CTR, counter=ctr)
-    ct = aes.encrypt(msg)
-    del ctr
-    del aes
-    return ct
-
-
-def ctr_dec(k, msg):
-    """
-    AES256-CTR (Decrypt)
-
-    :param k: Key
-    :param msg: Ciphertext
-    :return: Plaintext
-    """
-    ctr = Counter.new(128)
-    aes = AES.new(k, AES.MODE_CTR, counter=ctr)
-    ct = aes.decrypt(msg)
-    del ctr
-    del aes
-    return ct
+def pad(what, size):
+    """PKCS#7 padding"""
+    if len(what) > size:
+        raise ValueError('length exceeds desired padded length')
+    elif len(what) == size:
+        return what
+    wlen = len(what)
+    plen = size - wlen
+    out = struct.pack('<s', what)
+    pad_bytes = [struct.pack('B', _) for _ in xrange(0, plen)]
+    out += ''.join(pad_bytes)
+    del pad_bytes
+    del wlen
+    del plen
+    return out
 
 
 def yubikey_passphrase_cr(passphrase):
@@ -134,6 +73,3 @@ def yubikey_passphrase_cr(passphrase):
             return passphrase
         passphrase = response
     return passphrase
-
-
-_rng = Random.new()
