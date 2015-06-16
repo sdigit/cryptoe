@@ -9,7 +9,6 @@ was written.
 For a complete list of which documents the cryptoe package implements in whole or in part, see the REFS file in the
 master cryptoe directory.
 """
-from cryptoe.KeyDB import KEYDB_YUBIKEY_CR_SLOT
 from cryptoe.KeyMgmt import SHAd256_HEX
 
 __author__ = 'Sean Davis <dive@endersgame.net>'
@@ -19,7 +18,7 @@ import struct
 from Crypto.Util import Counter
 from Crypto.Cipher import AES
 
-from cryptoe import Random
+from cryptoe import Random, YUBIKEY_HMAC_CR_SLOT
 
 
 def pad(what, size):

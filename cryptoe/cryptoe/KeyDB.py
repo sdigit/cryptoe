@@ -6,10 +6,11 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.exc import NoResultFound
 
 from KeyWrap import KW
-from cryptoe import Random
-from cryptoe.KeyMgmt import newkey_pbkdf, newkey_hkdf, pack_hkdf_info, newkey_rnd, DEFAULT_PRF_HASH, SHAd256_HEX
+from cryptoe import Random, YUBIKEY_HMAC_CR_SLOT
+from cryptoe.KeyMgmt import newkey_pbkdf, newkey_hkdf, pack_hkdf_info, newkey_rnd, \
+    DEFAULT_PRF_HASH, SHAd256_HEX
 from cryptoe.exceptions import KeyLengthError, SaltLengthError
-from utils import yubikey_passphrase_cr
+from cryptoe.utils import yubikey_passphrase_cr
 
 KEYDB_USER = 'KeyDB'
 KEYDB_PURPOSE_MASTER = 'KDB Master'
@@ -20,7 +21,6 @@ KEYDB_PURPOSE_ROOT_MAC = 'HMAC Root Key'
 
 KEYDB_PBKDF2_ITERATIONS = 2 ** 20
 KEYDB_PASSPHRASE_LENGTH = 20
-KEYDB_YUBIKEY_CR_SLOT = 2
 
 Base = declarative_base()
 
