@@ -1,5 +1,6 @@
 from cryptoe import Random
-from cryptoe.KeyMgmt import pack_hkdf_info, newkey_rnd, SHAd256_HEX, DEFAULT_PRF_HASH, newkey_hkdf
+from cryptoe.Hash import SHAd256
+from cryptoe.KeyMgmt import pack_hkdf_info, newkey_rnd, DEFAULT_PRF_HASH, newkey_hkdf
 from cryptoe.KeyWrap import KW
 from cryptoe.exceptions import SaltLengthError, KeyLengthError
 from sqlalchemy import Column, Integer, String, Binary, DateTime, ForeignKey, \
@@ -72,9 +73,9 @@ def new_random_key(maker, kek, purpose, user, klen=32):
         raise KeyLengthError('Key returned by newkey_rnd does not match requested length (%d != %d)' % (len(k_actual),
                                                                                                         klen))
     k.key = KW.wrap(kek, k_actual)
-    k_hash = SHAd256_HEX(k_actual)
+    k_hash = SHAd256.new(k_actual).hexdigest()
     k.hash_shad256 = k_hash
-    k.related_hash = SHAd256_HEX(kek)
+    k.related_hash = SHAd256.new(kek).hexdigest()
     session.add(k)
     session.commit()
     session.close()
@@ -112,8 +113,8 @@ def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
         k.key = ''
     else:
         k.key = KW.wrap(kek, k_actual)
-    k.related_hash = SHAd256_HEX(kdk)
-    k_hash = SHAd256_HEX(k_actual)
+    k.related_hash = SHAd256.new(kdk).hexdigest()
+    k_hash = SHAd256.new(k_actual).hexdigest()
     k.hash_shad256 = k_hash
     session.add(k)
     session.commit()
@@ -156,7 +157,7 @@ def init_keys(maker):
     mk_key = newkey_pbkdf(klen, passphrase, mk_salt.salt, roundcount)
     if len(mk_key) != klen:
         raise KeyLengthError('PBKDF key is not of requested length (%d != %d)' % (len(mk_key), klen))
-    mk_hash = SHAd256_HEX(mk_key)
+    mk_hash = SHAd256.new(mk_key).hexdigest()
     mk.hash_shad256 = mk_hash
     session.add(mk)
     session.commit()
@@ -257,19 +258,19 @@ def get_db_key(maker):
     pw = getpass('passphrase: ').rstrip()
     pw = yubikey_passphrase_cr(pw)
     mk_key = newkey_pbkdf(32, pw, mk.salt.salt, mk.rounds)
-    mk_key_hash = SHAd256_HEX(mk_key)
+    mk_key_hash = SHAd256.new(mk_key).hexdigest()
     if mk_key_hash != mk.hash_shad256:
         return None
     wk_key = newkey_hkdf(32,
                          mk_key,
                          wk.salt.salt,
                          pack_hkdf_info(wk.purpose, wk.user))
-    wk_key_hash = SHAd256_HEX(wk_key)
+    wk_key_hash = SHAd256.new(wk_key).hexdigest()
     if wk_key_hash != wk.hash_shad256:
         return None
 
     dbk_key = KW.unwrap(wk_key, dbk.key)
-    dbk_key_hash = SHAd256_HEX(dbk_key)
+    dbk_key_hash = SHAd256.new(dbk_key).hexdigest()
     if dbk_key_hash != dbk.hash_shad256:
         return None
     else:
