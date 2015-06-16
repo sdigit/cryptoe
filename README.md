@@ -18,30 +18,7 @@ To install:
 I am trying to keep this list to only what is needed for security.
 - If on a glibc system, you will need libbsd for strlcpy/strlcat and friends.
 - An Intel CPU supporting RDRAND
-- OpenSSL (for now)
-
 
 ### TODO ###
-1. Add dieharder results
-1. - rdrand, C: rdrand_get_n_64
-1. - rdrand, C: rdrand_get_n_32
-1. - rdrand, C: rdrand_get_bytes
-1. - rdrand, Python: rdrand_get_n_64
-1. - rdrand, Python: rdrand_get_n_32
-1. - rdrand, Python: rdrand_get_bytes
-1. - ParanoiaRNG: essentially Fortuna, using SHAd256 digests of inputs (so far beats everything else in dieharder, it's slower but not by enough to preclude usage as RNG)
-3. Modularize the HMAC code, so (for example) whirlpool can be substituted for an SHA2 algorithm
-4. Add block ciphers:
-4. - Serpent (CBC mode) (code is present but not yet exposed via python API)
-5. Add hashes:
-5. - Whirlpool
-5. - SHA-3 (Keccak) once it's finalized
-6. RNG, standardization + OS support
-6. - Add SP800-90A CTR_DRBG where OS doesn't already offer a direct API for it (as an option, perhaps a default)
-6. - Linux (adapt code to use the crypto API for CTR_DRBG and failback to python implementation
-6. - NetBSD PRNG is already CTR_DRBG: we can use that directly: refactor C to know this.
-6. - FreeBSD & OpenBSD (portability is good)
-7. Testing
-7. - Add unit tests
-7. - Add assertions. Blow up rather than work stupidly.
-7. - Fire up old gear and see what happens on MSB (sparc32, sparc64): likely need endianness handling.
+1. Whirlpool test vectors
+2. FS&K SHAd256 test vectors (From FreeBSD kernel? need to find some)
