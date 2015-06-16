@@ -201,7 +201,8 @@ def newkey_hkdf(klen=32, k_in='', salt='', otherinfo=''):
 
 def SHAd256(msg):
     """
-    SHAd256 implementation for digesting something all at once (because Crypto.Random.Fortuna.SHAd256 isn't correct)
+    SHAd256 implementation for digesting something all at once (because Crypto.Random.Fortuna.SHAd256 uses the older
+    recommendation from Practical Cryptography; this is the recommendation from Cryptography Engineering)
     :param msg: message to hash
     """
     sha = SHA256.new()
@@ -212,7 +213,8 @@ def SHAd256(msg):
 
 def SHAd256_HEX(msg):
     """
-    SHAd256 implementation for digesting something all at once (because Crypto.Random.Fortuna.SHAd256 isn't correct)
+    SHAd256 implementation for digesting something all at once (because Crypto.Random.Fortuna.SHAd256 uses the older
+    recommendation from Practical Cryptography; this is the recommendation from Cryptography Engineering)
     :param msg: message to hash
     """
     sha = SHA256.new()
