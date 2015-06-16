@@ -40,10 +40,12 @@ def db_unlock(url):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         usage()
     elif sys.argv[1] not in command_map:
         usage()
-    else:
-        func = globals()[command_map[sys.argv[1]][0]](sys.argv[2])
-        print(func)
+    cmd = argv[1]
+    dbu = argv[2]
+    if dbu.find('://') == -1 or not (dbu.startswith('sqlite') and not dbu.startswith('postgresql')):
+        func = globals()[command_map[sys.argv[1]][0]]
+        func(dbu)
