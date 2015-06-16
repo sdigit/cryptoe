@@ -1,16 +1,12 @@
-from sqlalchemy import create_engine, Column, Integer, String, Binary, DateTime, ForeignKey, \
-    func
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker, relationship, backref
-from sqlalchemy.ext.declarative import declarative_base
-
-from sqlalchemy.orm.exc import NoResultFound
-
+from cryptoe import Random
+from cryptoe.KeyMgmt import pack_hkdf_info, newkey_rnd, SHAd256_HEX, DEFAULT_PRF_HASH, newkey_hkdf
 from cryptoe.KeyWrap import KW
-from cryptoe.KeyMgmt import newkey_pbkdf, newkey_hkdf, pack_hkdf_info, DEFAULT_PRF_HASH, SHAd256_HEX, new_random_key, \
-    new_salt, new_derived_key
-from cryptoe.exceptions import KeyLengthError
-from cryptoe.utils import yubikey_passphrase_cr
+from cryptoe.exceptions import SaltLengthError, KeyLengthError
+from sqlalchemy import Column, Integer, String, Binary, DateTime, ForeignKey, \
+    func
+from sqlalchemy.orm import relationship, backref
+from sqlalchemy.ext.declarative import declarative_base
+from utils import yubikey_passphrase_cr
 
 KEYDB_USER = 'KeyDB'
 KEYDB_PURPOSE_MASTER = 'KDB Master'
@@ -61,8 +57,75 @@ class Key(Base):
         return pack_hkdf_info(self.purpose, self.user)
 
 
+def new_random_key(maker, kek, purpose, user, klen=32):
+    session = maker()
+    no_salt = session.query(Salt).filter_by(salt='').first()
+    if len(no_salt.salt) != 0:
+        raise SaltLengthError('Salt length for new_random_key should be 0')
+    k = Key()
+    k.bits = klen * 8
+    k.purpose = purpose
+    k.user = user
+    k.salt_id = no_salt.id
+    k_actual = newkey_rnd(klen)
+    if len(k_actual) != klen:
+        raise KeyLengthError('Key returned by newkey_rnd does not match requested length (%d != %d)' % (len(k_actual),
+                                                                                                        klen))
+    k.key = KW.wrap(kek, k_actual)
+    k_hash = SHAd256_HEX(k_actual)
+    k.hash_shad256 = k_hash
+    k.related_hash = SHAd256_HEX(kek)
+    session.add(k)
+    session.commit()
+    session.close()
+    return [k_actual, k_hash]
+
+
+def new_salt(db_session, slen):
+    rbg = Random.new()
+    s = Salt()
+    s.salt = rbg.read(slen)
+    salt = s.salt
+    db_session.add(s)
+    db_session.commit()
+    s = db_session.query(Salt).filter_by(salt=salt).first()
+    assert (s.salt == salt)
+    del salt
+    return s
+
+
+def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
+    session = maker()
+    k = Key()
+    k.bits = klen * 8
+    k.purpose = purpose
+    k_salt = new_salt(session, klen)
+    if len(k_salt.salt) != klen:
+        raise SaltLengthError('HKDF salt must be the same length as the derivation key')
+    k.salt_id = k_salt.id
+    k.user = user
+    k_actual = newkey_hkdf(klen, kdk, k_salt.salt, pack_hkdf_info(k.purpose, k.user))
+    if len(k_actual) != klen:
+        raise KeyLengthError('HKDF returned a key with an incorrect length (%d != %d)' % (len(k_actual),
+                                                                                          klen))
+    if kek == '':
+        k.key = ''
+    else:
+        k.key = KW.wrap(kek, k_actual)
+    k.related_hash = SHAd256_HEX(kdk)
+    k_hash = SHAd256_HEX(k_actual)
+    k.hash_shad256 = k_hash
+    session.add(k)
+    session.commit()
+    session.close()
+    return [k_actual, k_hash]
+
+
 def init_keys(maker):
     from getpass import getpass
+    from cryptoe.exceptions import KeyLengthError
+    from cryptoe.KeyMgmt import newkey_pbkdf
+    from cryptoe.utils import yubikey_passphrase_cr
 
     passphrase_ready = 0
     session = maker()
@@ -124,6 +187,9 @@ def init_keys(maker):
 
 
 def db_ready(maker):
+    from sqlalchemy.orm.exc import NoResultFound
+    from sqlalchemy.exc import OperationalError
+
     session = maker()
     try:
         dbk = session.query(Key).filter_by(user=KEYDB_USER,
@@ -151,11 +217,9 @@ def initialize_db(dbu):
     """
     :type dbu: str
     """
-    print('Preparing to create database.')
-    engine = create_engine(dbu)
     objs = []
-    Base.metadata.create_all(engine)
-    sm = sessionmaker(bind=engine)
+    sm = open_db(dbu)
+    Base.metadata.create_all(sm.kw['bind'])
     if db_ready(sm) is True:
         print('Database already initialized!')
         return None
@@ -171,6 +235,9 @@ def initialize_db(dbu):
 
 
 def open_db(dbu):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
     engine = create_engine(dbu)
     sm = sessionmaker(bind=engine)
     return sm
@@ -178,6 +245,8 @@ def open_db(dbu):
 
 def get_db_key(maker):
     from getpass import getpass
+    from cryptoe.KeyWrap import KW
+    from cryptoe.KeyMgmt import newkey_pbkdf, newkey_hkdf
 
     session = maker()
 

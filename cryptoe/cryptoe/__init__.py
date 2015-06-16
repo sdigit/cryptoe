@@ -1,7 +1,7 @@
 import struct
 
 __author__ = 'Sean Davis <dive@endersgame.net>'
-__all__ = ['utils', 'KeyMgmt', 'KeyWrap', 'KeyDB', 'Hash']
+__all__ = ['Random', 'utils', 'KeyMgmt', 'KeyWrap', 'KeyDB', 'Hash']
 version_info = (1, 10, 0)
 __version__ = '.'.join([str(_) for _ in version_info])
 DEFAULT_PBKDF2_ITERATIONS = 2 ** 16

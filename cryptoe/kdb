@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+from cryptoe import KeyDB
 import sys
 
 command_map = {
@@ -18,20 +18,18 @@ def usage():
 
 
 def db_create(url):
-    from cryptoe.KeyDB import initialize_db, init_keys
-    smaker = initialize_db(url)
+    smaker = KeyDB.initialize_db(url)
     if smaker:
-        init_keys(smaker)
+        KeyDB.init_keys(smaker)
     sys.exit(0)
 
 
 def db_unlock(url):
-    from cryptoe.KeyDB import open_db, get_db_key, db_ready
-    smaker = open_db(url)
-    if not db_ready(smaker):
+    smaker = KeyDB.open_db(url)
+    if not KeyDB.db_ready(smaker):
         print('database not initialized')
         sys.exit(0)
-    dbk = get_db_key(smaker)
+    dbk = KeyDB.get_db_key(smaker)
     if dbk is None:
         print('key mismatch. cannot unwrap database keys.')
     else:
