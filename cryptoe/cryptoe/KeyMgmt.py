@@ -197,27 +197,3 @@ def newkey_hkdf(klen=32, k_in='', salt='', otherinfo=''):
     prk = hkdf.hkdf_extract(salt, k_in)
     k = hkdf.hkdf_expand(prk, info=otherinfo, length=klen)
     return k
-
-
-def SHAd256(msg):
-    """
-    SHAd256 implementation for digesting something all at once (because Crypto.Random.Fortuna.SHAd256 uses the older
-    recommendation from Practical Cryptography; this is the recommendation from Cryptography Engineering)
-    :param msg: message to hash
-    """
-    sha = SHA256.new()
-    sha.update('\x00' * 64)
-    sha.update(msg)
-    return SHA256.new(sha.digest()).digest()
-
-
-def SHAd256_HEX(msg):
-    """
-    SHAd256 implementation for digesting something all at once (because Crypto.Random.Fortuna.SHAd256 uses the older
-    recommendation from Practical Cryptography; this is the recommendation from Cryptography Engineering)
-    :param msg: message to hash
-    """
-    sha = SHA256.new()
-    sha.update('\x00' * 64)
-    sha.update(msg)
-    return SHA256.new(sha.digest()).hexdigest()
