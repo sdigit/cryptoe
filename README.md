@@ -1,24 +1,31 @@
 ## CRYPTOE ##
 #### A project aiming to offer a full set of cryptographic routines to make implementing crypto in any Python project easy. ####
 
-Cryptoe isn't intended to be useful on its own. It is intended to provide an easily integrated crypto library for use in other projects, with as little dependency on external libraries (eg. OpenSSL) as I can manage.
-When ready for release, this will ship with scripts to validate it against common test vectors. NIST/FIPS will be first.
+Cryptoe is intended to offer an easy to use API to common cryptographic tasks, as well as key storage that follows the
+NIST requirements as closely as possible[1]
 
-To install:
-> cd cryptoe && python setup.py install --user
+A secondary goal is the avoidance of OpenSSL and also the avoidance of code licensed under GPL and similar highly restrictive licenses.
 
-
-### CAVEATS ###
-1. The first priority of this codebase is correctness of implementation. As such, it has been written to assume certain things about types, compiler behavior, etc.
-2. Chips lacking RDRAND are out of luck until I have the RNG modules ready.
-3. This will not be the fastest implementation of any algorithm it includes, as it's being written for correctness and verifiability rather than performance.
-
+[1]: Currently, there are two known major deviations from NIST:
+     1. Fortuna is used for random numbers, which is not an approved random bit generator.
+     2. SHAd256 is not an approved hash algorithm (though it's a way of using an approved hash algorithm)
 
 ### Dependencies ###
-I am trying to keep this list to only what is needed for security.
-- If on a glibc system, you will need libbsd for strlcpy/strlcat and friends.
-- An Intel CPU supporting RDRAND
+Cryptoe requires the following additional python packages:
+1. PyCrypto
+2. hkdf [introduces a dependency on OpenSSL until it can be replaced with another implementation]
+3. sqlalchemy
+4. whirlpool
+
+Cryptoe assumes the following hardware is present:
+1. An Intel CPU which implements the RDRAND instruction
 
 ### TODO ###
-1. Whirlpool test vectors
-2. FS&K SHAd256 test vectors (From FreeBSD kernel? need to find some)
+1. Add unit tests
+1.1. SHAd256 test vectors (done, not yet in git)
+1.2. Whirlpool test vectors
+1.3. KW and KWP test vectors
+2. Add ciphers
+2.1. AES will use PyCrypto's implementation
+2.2. Serpent code needs CBC and CTR modes written for it, or another implementation used.
+2.3. Twofish code needs CBC and CTR modes written for it, or another implementation used.
