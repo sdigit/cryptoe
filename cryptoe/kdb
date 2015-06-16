@@ -1,0 +1,49 @@
+#!/usr/bin/python
+
+import sys
+
+command_map = {
+    'init': ['db_create', 'initialize the key database'],
+    'auth': ['db_unlock', 'prompt for key database passphrase and ensure master key can be unwrapped'],
+    'help': ['usage', 'this message'],
+}
+
+
+def usage():
+    print('usage: %s <command> <db url> [subcommand] [args...]' % sys.argv[0])
+    print('commands:')
+    for command in command_map:
+        print(' %s\t%s' % (command, command_map[command][1]))
+    sys.exit(0)
+
+
+def db_create(url):
+    from cryptoe.KeyDB import initialize_db, init_keys
+    smaker = initialize_db(url)
+    if smaker:
+        init_keys(smaker)
+    sys.exit(0)
+
+
+def db_unlock(url):
+    from cryptoe.KeyDB import open_db, get_db_key, db_ready
+    smaker = open_db(url)
+    if not db_ready(smaker):
+        print('database not initialized')
+        sys.exit(0)
+    dbk = get_db_key(smaker)
+    if dbk is None:
+        print('key mismatch. cannot unwrap database keys.')
+    else:
+        print('dbk len = %d' % len(dbk))
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        usage()
+    elif sys.argv[1] not in command_map:
+        usage()
+    else:
+        func = globals()[command_map[sys.argv[1]][0]](sys.argv[2])
+        print(func)

@@ -8,3 +8,9 @@ I may have added bugs. I won't make the original authors take credit for those.
 1) The AES Key Wrap code in utils.py was first found here: https://gist.github.com/doublereedkurt/4243633
 2) PyCrypto
 3) RDRAND support is pulled from Intel's RDRAND library, with one change: clearing of the temporary random value in rdrand_get_bytes
+
+I would like to thank the following people for placing their code in the public domain, without them this project would
+not have been possible:
+    Lorenz Quack
+    Dwayne C. Litzenberger
+
