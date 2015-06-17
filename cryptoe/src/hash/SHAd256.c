@@ -169,7 +169,7 @@ static void sha_compress(hash_state * hs)
             (((uint32_t) hs->buf[(WORD_SIZE*i)+2]) << (WORD_SIZE_BITS-24)) |
             (((uint32_t) hs->buf[(WORD_SIZE*i)+3]) << (WORD_SIZE_BITS-32))
             );
-    }    
+    }
 
     /* fill W[16..SCHEDULE_SIZE] */
     for (i = 16; i < SCHEDULE_SIZE; i++)
@@ -262,16 +262,16 @@ static void sha_done(hash_state * hs, unsigned char *hash)
 
     /* append length */
     for (i = 0; i < WORD_SIZE; i++)
-        hs->buf[i + LAST_BLOCK_SIZE] = 
+        hs->buf[i + LAST_BLOCK_SIZE] =
             (hs->length_upper >> ((WORD_SIZE - 1 - i) * 8)) & 0xFF;
     for (i = 0; i < WORD_SIZE; i++)
-        hs->buf[i + LAST_BLOCK_SIZE + WORD_SIZE] = 
+        hs->buf[i + LAST_BLOCK_SIZE + WORD_SIZE] =
             (hs->length_lower >> ((WORD_SIZE - 1 - i) * 8)) & 0xFF;
     sha_compress(hs);
 
     /* copy output */
     for (i = 0; i < DIGEST_SIZE; i++)
-        hash[i] = (hs->state[i / WORD_SIZE] >> 
+        hash[i] = (hs->state[i / WORD_SIZE] >>
                    ((WORD_SIZE - 1 - (i % WORD_SIZE)) * 8)) & 0xFF;
 }
 
@@ -305,16 +305,17 @@ static PyObject *
 hash_digest (const hash_state *self)
 {
 	unsigned char digest[DIGEST_SIZE];
-	hash_state temp;
-    hash_state two_state_solution;
+	hash_state inner; /* ordinary SHA2-256 */
+    hash_state outer; /* SHA-256(SHA-256(0^512 | m)) */
 
-	hash_copy((hash_state*)self,&temp);
-	sha_done(&temp,digest);
+	hash_copy((hash_state*)self,&inner);
+	sha_done(&inner,digest);
 
-    sha_init(&two_state_solution);
-    sha_process(&two_state_solution,(unsigned char *)digest, DIGEST_SIZE);
+    sha_init(&outer);
+    sha_process(&outer,(unsigned char *)digest, DIGEST_SIZE);
     memset(digest,0,DIGEST_SIZE);
-    sha_done(&two_state_solution, digest);
+    sha_done(&outer, digest);
+    memset(&outer,0,sizeof(hash_state));
 
 	return PyBytes_FromStringAndSize((char *)digest, DIGEST_SIZE);
 }
@@ -324,7 +325,7 @@ typedef struct {
 	hash_state st;
 } ALGobject;
 
-/* 
+/*
  * Please see PEP3123 for a discussion of PyObject_HEAD and changes made in 3.x
  * to make it conform to Standard C.
  * These changes also dictate using Py_TYPE to check type, and
@@ -367,12 +368,12 @@ ALG_copy(ALGobject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "")) {
 		return NULL;
 	}
-	
+
 	if ( (newobj = newALGobject())==NULL)
 		return NULL;
 
 	hash_copy(&(self->st), &(newobj->st));
-	return((PyObject *)newobj); 
+	return((PyObject *)newobj);
 }
 
 static PyObject *
@@ -514,7 +515,7 @@ ALG_new(PyObject *self, PyObject *args)
         ALGobject *new;
 	unsigned char *cp = NULL;
 	int len;
-	
+
 	if ((new = newALGobject()) == NULL)
 		return NULL;
 
@@ -527,7 +528,7 @@ ALG_new(PyObject *self, PyObject *args)
         hash_init(&(new->st));
 
 	if (PyErr_Occurred()) {
-		Py_DECREF(new); 
+		Py_DECREF(new);
 		return NULL;
 	}
 	if (cp) {
