@@ -9,7 +9,7 @@ was written.
 For a complete list of which documents the cryptoe package implements in whole or in part, see the REFS file in the
 master cryptoe directory.
 """
-from cryptoe.KeyMgmt import SHAd256_HEX
+from cryptoe.Hash import SHAd256, whirlpool
 
 __author__ = 'Sean Davis <dive@endersgame.net>'
 
@@ -63,7 +63,7 @@ def yubikey_passphrase_cr(passphrase):
     except yubico.yubikey.YubiKeyError:
         return passphrase
     if yubikey:
-        challenge = SHAd256_HEX(passphrase)
+        challenge = SHAd256.new(passphrase).hexdigest()
         print('[YubiKey] Sending challenge')
         try:
             response = yubikey.challenge_response(challenge, slot=YUBIKEY_HMAC_CR_SLOT)
@@ -71,5 +71,5 @@ def yubikey_passphrase_cr(passphrase):
         except yubico.yubikey.YubiKeyTimeout:
             print('[YubiKey] Timeout. Not using Yubikey.')
             return passphrase
-        passphrase = response
+        passphrase = whirlpool.new(response).hexdigest()
     return passphrase
