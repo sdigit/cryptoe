@@ -22,6 +22,13 @@ KEYDB_PASSPHRASE_LENGTH = 20
 Base = declarative_base()
 
 
+class HashAlgo(Base):
+    __tablename__ = 'hash_algorithms'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    digest_size = Column(Integer, nullable=False)
+
+
 class Salt(Base):
     __tablename__ = 'salts'
     id = Column(Integer, primary_key=True)
@@ -36,7 +43,7 @@ class MasterKey(Base):
     rounds = Column(Integer, nullable=False)
     salt_id = Column(Integer, ForeignKey('salts.id'))
     bits = Column(Integer, nullable=False)
-    hash_shad256 = Column(String, nullable=False, unique=True)
+    key_hash = Column(String, nullable=False, unique=True)
     salt = relationship("Salt", backref=backref('salts', order_by=id))
 
 
@@ -49,7 +56,7 @@ class Key(Base):
     salt_id = Column(Integer, ForeignKey('salts.id'))
     purpose = Column(String, nullable=False)
     user = Column(String, nullable=False)
-    hash_shad256 = Column(String, nullable=False, unique=True)
+    key_hash = Column(String, nullable=False, unique=True)
     related_hash = Column(String, nullable=False)
     salt = relationship("Salt", backref=backref('salts.id', order_by=id))
 
@@ -74,7 +81,7 @@ def new_random_key(maker, kek, purpose, user, klen=32):
                                                                                                         klen))
     k.key = KW.wrap(kek, k_actual)
     k_hash = SHAd256.new(k_actual).hexdigest()
-    k.hash_shad256 = k_hash
+    k.key_hash = k_hash
     k.related_hash = SHAd256.new(kek).hexdigest()
     session.add(k)
     session.commit()
@@ -115,7 +122,7 @@ def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
         k.key = KW.wrap(kek, k_actual)
     k.related_hash = SHAd256.new(kdk).hexdigest()
     k_hash = SHAd256.new(k_actual).hexdigest()
-    k.hash_shad256 = k_hash
+    k.key_hash = k_hash
     session.add(k)
     session.commit()
     session.close()
@@ -158,7 +165,7 @@ def init_keys(maker):
     if len(mk_key) != klen:
         raise KeyLengthError('PBKDF key is not of requested length (%d != %d)' % (len(mk_key), klen))
     mk_hash = SHAd256.new(mk_key).hexdigest()
-    mk.hash_shad256 = mk_hash
+    mk.key_hash = mk_hash
     session.add(mk)
     session.commit()
     session.close()
@@ -201,14 +208,14 @@ def db_ready(maker):
     except OperationalError:
         session.close()
         return False
-    wk = session.query(Key).filter_by(hash_shad256=dbk.related_hash).one()
-    mk = session.query(MasterKey).filter_by(hash_shad256=wk.related_hash).one()
+    wk = session.query(Key).filter_by(key_hash=dbk.related_hash).one()
+    mk = session.query(MasterKey).filter_by(key_hash=wk.related_hash).one()
     assert (len(dbk.salt.salt) == 0)
     assert (len(wk.salt.salt) == 32)
     assert (len(mk.salt.salt) == 32)
-    assert (len(dbk.hash_shad256) == 64)
-    assert (len(wk.hash_shad256) == 64)
-    assert (len(mk.hash_shad256) == 64)
+    assert (len(dbk.key_hash) == 64)
+    assert (len(wk.key_hash) == 64)
+    assert (len(mk.key_hash) == 64)
     assert (wk.user == KEYDB_USER and wk.purpose == KEYDB_PURPOSE_WRAPPING)
     session.close()
     return True
@@ -218,12 +225,18 @@ def initialize_db(dbu):
     """
     :type dbu: str
     """
-    objs = []
     sm = open_db(dbu)
     Base.metadata.create_all(sm.kw['bind'])
     if db_ready(sm) is True:
         print('Database already initialized!')
         return None
+    h_SHAd256 = HashAlgo()
+    h_SHAd256.name = 'SHAd256'
+    h_SHAd256.digest_size = 256
+    h_Whirlpool = HashAlgo()
+    h_Whirlpool.name = 'Whirlpool'
+    h_Whirlpool.digest_size = 512
+    objs = [h_SHAd256, h_Whirlpool]
     session = sm()
     for o in objs:
         session.add(o)
@@ -252,26 +265,26 @@ def get_db_key(maker):
     session = maker()
 
     dbk = session.query(Key).filter_by(user=KEYDB_USER, purpose=KEYDB_PURPOSE_MASTER).order_by(Key.created.desc()).one()
-    wk = session.query(Key).filter_by(hash_shad256=dbk.related_hash).one()
-    mk = session.query(MasterKey).filter_by(hash_shad256=wk.related_hash).one()
+    wk = session.query(Key).filter_by(key_hash=dbk.related_hash).one()
+    mk = session.query(MasterKey).filter_by(key_hash=wk.related_hash).one()
 
     pw = getpass('passphrase: ').rstrip()
     pw = yubikey_passphrase_cr(pw)
     mk_key = newkey_pbkdf(32, pw, mk.salt.salt, mk.rounds)
     mk_key_hash = SHAd256.new(mk_key).hexdigest()
-    if mk_key_hash != mk.hash_shad256:
+    if mk_key_hash != mk.key_hash:
         return None
     wk_key = newkey_hkdf(32,
                          mk_key,
                          wk.salt.salt,
                          pack_hkdf_info(wk.purpose, wk.user))
     wk_key_hash = SHAd256.new(wk_key).hexdigest()
-    if wk_key_hash != wk.hash_shad256:
+    if wk_key_hash != wk.key_hash:
         return None
 
     dbk_key = KW.unwrap(wk_key, dbk.key)
     dbk_key_hash = SHAd256.new(dbk_key).hexdigest()
-    if dbk_key_hash != dbk.hash_shad256:
+    if dbk_key_hash != dbk.key_hash:
         return None
     else:
         print('database key hash verified')
