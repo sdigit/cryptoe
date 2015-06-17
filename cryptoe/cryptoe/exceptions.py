@@ -19,7 +19,7 @@ class DerivationError(CryptoKeyError):
 
 
 class KeyLengthError(CryptoKeyError):
-    """Returned key is not of expected length"""
+    """Unsafe or unsupported key length"""
 
 
 class SaltError(CryptoError):
