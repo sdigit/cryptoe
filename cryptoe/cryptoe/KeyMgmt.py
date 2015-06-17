@@ -96,7 +96,7 @@ def pack_hkdf_info(label, context):
     label_struct.pack_into(buf, 0, LABEL_LEN, str(label))
     struct.pack_into('>B', buf, 31, 0x00)
     context_struct.pack_into(buf, 32, CONTEXT_LEN, str(context))
-    return buf
+    return bytes(buf)
 
 
 def unpack_hkdf_info(buf):
@@ -114,7 +114,7 @@ def unpack_hkdf_info(buf):
 
 
 def gather_easy_entropy(size):
-    hm = HMAC.new('\x00' * (size / 8), digestmod=SHA256)  # Avoid extension attacks
+    hm = HMAC.new('\x00' * (size / 8), digestmod=SHA512)  # Avoid extension attacks
     # 64 bits from time
     tm = time.time()
     hm.update(struct.pack('!L', int(2 ** 30 * (tm - floor(tm)))))
@@ -160,10 +160,25 @@ def newkey_pbkdf(klen=32, k_in='', salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, pr
     """
     assert (klen > 0)
     assert (klen % 8 == 0)
+    from cryptoe.Hash import SHAd256
+    from Crypto.Hash import SHA384
+    from Crypto.Hash import SHA512
+
+    hash_choice = {
+        32: SHAd256,
+        48: SHA384,
+        64: SHA512,
+    }
+
+    if klen not in [32,48,64]:
+        raise KeyLengthError('Key length %d is not supported by this module.' % klen)
     if rounds < MINIMUM_PBKDF2_ITERATIONS:
         raise LowIterationCount('PBKDF2 should use >= %d iterations' % MINIMUM_PBKDF2_ITERATIONS)
     if not prf:
-        prf = lambda x, y: HMAC.new(x, y, SHA512).digest()
+        hashobj = hash_choice[klen]
+        ho_name = hashobj.__name__.split('.')[-1]
+        print('[PBKDF] Deriving %d-bit key using HMAC-%s' % (klen*8,ho_name))
+        prf = lambda x, y: HMAC.new(x, y, hash_choice[klen]).digest()
 
     k = PBKDF2(k_in, salt, dkLen=klen, count=rounds, prf=prf)
     return k
@@ -194,6 +209,19 @@ def newkey_hkdf(klen=32, k_in='', salt='', otherinfo=''):
         salt = rbg.read(klen / 8)
     elif len(salt) != klen:
         raise RuntimeError('salt length mismatch')
-    prk = hkdf.hkdf_extract(salt, k_in)
-    k = hkdf.hkdf_expand(prk, info=otherinfo, length=klen)
+    from cryptoe.Hash import SHAd256
+    from Crypto.Hash import SHA384
+    from cryptoe.Hash import whirlpool
+
+    hash_choice = {
+        32: SHAd256,
+        48: SHA384,
+        64: whirlpool,
+    }
+
+    ho_name = hash_choice[klen].__name__.split('.')[-1]
+    print('[HKDF] Deriving %d-bit key using HMAC-%s' % (klen*8,ho_name))
+    prk = hkdf.hkdf_extract(salt, k_in, hash=hash_choice[klen])
+    k = hkdf.hkdf_expand(prk, otherinfo, klen, hash=hash_choice[klen])
     return k
+

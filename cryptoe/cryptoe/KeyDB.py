@@ -1,23 +1,21 @@
-from cryptoe import Random
-from cryptoe.Hash import SHAd256
-from cryptoe.KeyMgmt import pack_hkdf_info, newkey_rnd, DEFAULT_PRF_HASH, newkey_hkdf
-from cryptoe.KeyWrap import KW
-from cryptoe.exceptions import SaltLengthError, KeyLengthError
+from cryptoe.KeyMgmt import pack_hkdf_info, DEFAULT_PRF_HASH
 from sqlalchemy import Column, Integer, String, Binary, DateTime, ForeignKey, \
     func
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
-from utils import yubikey_passphrase_cr
+
+from cryptoe.Hash import SHAd256
+from cryptoe.exceptions import SaltLengthError, KeyLengthError
 
 KEYDB_USER = 'KeyDB'
-KEYDB_PURPOSE_MASTER = 'KDB Master'
-KEYDB_PURPOSE_WRAPPING = 'KDB Wrapping'
+KEYDB_PURPOSE_MASTER = 'Root'
+KEYDB_PURPOSE_WRAPPING = 'Wrapping'
 KEYDB_PURPOSE_DERIVATION = 'KDF'
-KEYDB_PURPOSE_ROOT_ENC = 'Cipher Root Key'
-KEYDB_PURPOSE_ROOT_MAC = 'HMAC Root Key'
+KEYDB_PURPOSE_ENCRYPTION = 'Encryption'
+KEYDB_PURPOSE_AUTHENTICATION = 'HMAC'
 
-KEYDB_PBKDF2_ITERATIONS = 2 ** 20
-KEYDB_PASSPHRASE_LENGTH = 20
+KEYDB_PBKDF2_ITERATIONS = 2 ** 17
+KEYDB_PASSPHRASE_LENGTH = 5
 
 Base = declarative_base()
 
@@ -26,6 +24,7 @@ class HashAlgo(Base):
     __tablename__ = 'hash_algorithms'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
+    block_size = Column(Integer, nullable=False)
     digest_size = Column(Integer, nullable=False)
 
 
@@ -66,6 +65,9 @@ class Key(Base):
 
 
 def new_random_key(maker, kek, purpose, user, klen=32):
+    from cryptoe.KeyMgmt import newkey_rnd
+    from cryptoe.KeyWrap import KWP
+
     session = maker()
     no_salt = session.query(Salt).filter_by(salt='').first()
     if len(no_salt.salt) != 0:
@@ -79,17 +81,19 @@ def new_random_key(maker, kek, purpose, user, klen=32):
     if len(k_actual) != klen:
         raise KeyLengthError('Key returned by newkey_rnd does not match requested length (%d != %d)' % (len(k_actual),
                                                                                                         klen))
-    k.key = KW.wrap(kek, k_actual)
+    k.key = KWP.wrap(kek, k_actual)
     k_hash = SHAd256.new(k_actual).hexdigest()
     k.key_hash = k_hash
     k.related_hash = SHAd256.new(kek).hexdigest()
     session.add(k)
     session.commit()
     session.close()
-    return [k_actual, k_hash]
+    return k_actual
 
 
 def new_salt(db_session, slen):
+    from cryptoe import Random
+
     rbg = Random.new()
     s = Salt()
     s.salt = rbg.read(slen)
@@ -103,6 +107,9 @@ def new_salt(db_session, slen):
 
 
 def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
+    from cryptoe.KeyWrap import KWP
+    from cryptoe.KeyMgmt import newkey_hkdf
+
     session = maker()
     k = Key()
     k.bits = klen * 8
@@ -119,14 +126,14 @@ def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
     if kek == '':
         k.key = ''
     else:
-        k.key = KW.wrap(kek, k_actual)
+        k.key = KWP.wrap(kek, k_actual)
     k.related_hash = SHAd256.new(kdk).hexdigest()
     k_hash = SHAd256.new(k_actual).hexdigest()
     k.key_hash = k_hash
     session.add(k)
     session.commit()
     session.close()
-    return [k_actual, k_hash]
+    return k_actual
 
 
 def init_keys(maker):
@@ -159,9 +166,9 @@ def init_keys(maker):
     mk.prf_hash = DEFAULT_PRF_HASH.__name__.split('.')[-1]
     mk.rounds = roundcount
     mk.salt_id = mk_salt.id
-    print('Using PBKDF2 with %d rounds of %s' % (roundcount, mk.prf_hash))
 
     mk_key = newkey_pbkdf(klen, passphrase, mk_salt.salt, roundcount)
+    print('[INIT->PBKDF] %d-bit master key derived from user input' % len(mk_key) * 8)
     if len(mk_key) != klen:
         raise KeyLengthError('PBKDF key is not of requested length (%d != %d)' % (len(mk_key), klen))
     mk_hash = SHAd256.new(mk_key).hexdigest()
@@ -174,24 +181,49 @@ def init_keys(maker):
     del mk
     del mk_salt
 
-    print('Using master key to derive database key wrapping key')
+    kp = KEYDB_PURPOSE_WRAPPING
+    wk = new_derived_key(maker, '', mk_key, kp, KEYDB_USER, klen)
+    print('[INIT->KDF] %d-bit key (purpose: %s) derived' % (len(wk) * 8, kp))
 
-    dk, dk_hash = new_derived_key(maker, kek='', kdk=mk_key, purpose=KEYDB_PURPOSE_WRAPPING, user=KEYDB_USER, klen=32)
-    if len(dk) != klen:
-        raise KeyLengthError('PBKDF key is not of requested length')
+    if len(wk) != klen:
+        raise KeyLengthError('[INIT->KDF] %d != %d' % (len(wk), klen))
     mk_key = '\x00' * klen
     del mk_key
 
-    print('Generating random database root key')
+    dbk_list = [
+        [
+            'encryption',
+            32,
+            KEYDB_PURPOSE_ENCRYPTION,
+        ],
+        [
+            'authentication',
+            32,
+            KEYDB_PURPOSE_AUTHENTICATION,
+        ],
+        [
+            'authentication',
+            48,
+            KEYDB_PURPOSE_AUTHENTICATION,
+        ],
+        [
+            'authentication',
+            64,
+            KEYDB_PURPOSE_AUTHENTICATION,
+        ],
+    ]
 
-    dbk, dbk_hash = new_random_key(maker, kek=dk, purpose=KEYDB_PURPOSE_MASTER, user=KEYDB_USER, klen=32)
-    if len(dbk) != klen:
-        raise KeyLengthError('Random key is not of requested length')
+    for k in dbk_list:
+        rk = new_random_key(maker, wk, k[2], KEYDB_USER, k[1])
+        if len(rk) != k[1]:
+            raise KeyLengthError('[INIT->RND] %d != %d' % (len(rk), k[1]))
+        else:
+            print('[INIT->RND] %d-bit key "%s" created and wrapped' % (len(rk) * 8, k[2]))
 
-    dk = '\x00' * klen
-    del dk
-    dbk = '\x00' * klen
-    del dbk
+        rk = '\x00' * klen
+        del rk
+    wk = '\x00' * 32
+    del wk
 
 
 def db_ready(maker):
@@ -213,9 +245,9 @@ def db_ready(maker):
     assert (len(dbk.salt.salt) == 0)
     assert (len(wk.salt.salt) == 32)
     assert (len(mk.salt.salt) == 32)
-    assert (len(dbk.key_hash) == 64)
-    assert (len(wk.key_hash) == 64)
-    assert (len(mk.key_hash) == 64)
+    assert (len(dbk.key_hash) in [48, 64])
+    assert (len(wk.key_hash) in [48, 64])
+    assert (len(mk.key_hash) in [48, 64])
     assert (wk.user == KEYDB_USER and wk.purpose == KEYDB_PURPOSE_WRAPPING)
     session.close()
     return True
@@ -230,13 +262,31 @@ def initialize_db(dbu):
     if db_ready(sm) is True:
         print('Database already initialized!')
         return None
-    h_SHAd256 = HashAlgo()
-    h_SHAd256.name = 'SHAd256'
-    h_SHAd256.digest_size = 256
-    h_Whirlpool = HashAlgo()
-    h_Whirlpool.name = 'Whirlpool'
-    h_Whirlpool.digest_size = 512
-    objs = [h_SHAd256, h_Whirlpool]
+    objs = []
+    hash_info = {
+        'Whirlpool': {
+            'digest_size': 512,
+            'block_size': 512,
+        },
+        'SHA256': {
+            'digest_size': 256,
+            'block_size': 512,
+        },
+        'SHA384': {
+            'digest_size': 384,
+            'block_size': 1024,
+        },
+        'SHA512': {
+            'digest_size': 512,
+            'block_size': 1024,
+        },
+    }
+    for hi in hash_info:
+        h = HashAlgo()
+        h.name = hi
+        h.digest_size = hash_info[hi]['digest_size'] / 8
+        h.block_size = hash_info[hi]['block_size'] / 8
+
     session = sm()
     for o in objs:
         session.add(o)
@@ -257,10 +307,11 @@ def open_db(dbu):
     return sm
 
 
-def get_db_key(maker):
+def get_db_keys(maker):
     from getpass import getpass
-    from cryptoe.KeyWrap import KW
     from cryptoe.KeyMgmt import newkey_pbkdf, newkey_hkdf
+    from cryptoe.KeyWrap import KWP
+    from utils import yubikey_passphrase_cr
 
     session = maker()
 
@@ -282,7 +333,7 @@ def get_db_key(maker):
     if wk_key_hash != wk.key_hash:
         return None
 
-    dbk_key = KW.unwrap(wk_key, dbk.key)
+    dbk_key = KWP.unwrap(wk_key, dbk.key)
     dbk_key_hash = SHAd256.new(dbk_key).hexdigest()
     if dbk_key_hash != dbk.key_hash:
         return None
