@@ -26,16 +26,15 @@ import os
 import threading
 import struct
 import time
-import sys
-
-if sys.version_info[0] == 2 and sys.version_info[1] == 1:
-    from Crypto.Util.py21compat import *
 
 from math import floor, ceil
 from Crypto.Hash import HMAC, SHA512
 from Crypto.Random import OSRNG
 
 from Crypto.Random.Fortuna import FortunaAccumulator
+from cryptoe.Hash import SHAd256
+
+RDRAND_SUPPORTED = 0
 
 
 class _EntropySource(object):
@@ -52,30 +51,40 @@ class _EntropySource(object):
 class _EntropyCollector(object):
     def __init__(self, accumulator):
         self.fancy = 1
-        cryptoe_ext.rdrand_64(1024)
-        self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHA512)
+        self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHAd256)
         self._osrng = OSRNG.new()
-        self._osrng_es = _EntropySource(accumulator, 255)
-        self._rdrand_es = _EntropySource(accumulator, 254)
-        self._time_es = _EntropySource(accumulator, 253)
-        self._clock_es = _EntropySource(accumulator, 252)
+        es_num = 255
+        self._osrng_es = _EntropySource(accumulator, es_num)
+        es_num -= 1
+        if RDRAND_SUPPORTED:
+            cryptoe_ext.rdrand_64(1024)
+            self._rdrand_es = _EntropySource(accumulator, es_num)
+            es_num -= 1
+
+        self._time_es = _EntropySource(accumulator, es_num)
+        es_num -= 1
+        self._clock_es = _EntropySource(accumulator, es_num)
+        del es_num
 
     def reinit(self):
-        # force RDRAND to reseed
-        cryptoe_ext.rdrand_64(1024)
-        self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHA512)
-        # Add 256 bits to each of the 32 pools, twice, from RDRAND. Force reseeding first.
-        for i in range(2):
+
+        if RDRAND_SUPPORTED:
             # force RDRAND to reseed
-            block = cryptoe_ext.rdrand_bytes(32 * 32)
-            # force RDRAND to reseed
-            for p in range(32):
-                self._rdrand_es.feed(block[p * 32:(p + 1) * 32])
-            block = None
-            del block
-        # Add 256 bits to each of the 32 pools, twice, from OSRNG. Force RDRAND reseed as it is used
-        # by the linux kernel PRNG.
-        cryptoe_ext.rdrand_64(1024)
+            cryptoe_ext.rdrand_64(1024)
+            self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHAd256)
+            for i in range(2):
+                # force RDRAND to reseed
+                block = cryptoe_ext.rdrand_bytes(32 * 32)
+                # force RDRAND to reseed
+                for p in range(32):
+                    self._rdrand_es.feed(block[p * 32:(p + 1) * 32])
+                block = None
+                del block
+            # Add 256 bits to each of the 32 pools, twice, from OSRNG. Force RDRAND reseed as it is used
+            # by the linux kernel PRNG.
+            cryptoe_ext.rdrand_64(1024)
+        else:
+            self._hmac = HMAC.new(key=self._osrng.read(32), digestmod=SHAd256)
         for i in range(2):
             block = self._osrng.read(32 * 32)
             for p in range(32):
@@ -101,13 +110,14 @@ class _EntropyCollector(object):
         h = None
         del t
         del h
-        # Feed Fortuna four 64bit RDRANDs, conditioned by SHA512
-        cryptoe_ext.rdrand_64(1024)
-        r = cryptoe_ext.rdrand_bytes(64)
-        r = SHA512.new(r).digest()[:32]
-        self._rdrand_es.feed(r)
-        r = None
-        del r
+        if RDRAND_SUPPORTED:
+            # Feed Fortuna four 64bit RDRANDs, conditioned by SHA512
+            cryptoe_ext.rdrand_64(1024)
+            r = cryptoe_ext.rdrand_bytes(64)
+            r = SHA512.new(r).digest()[:32]
+            self._rdrand_es.feed(r)
+            r = None
+            del r
 
 
 class _ParanoidRNG(object):
@@ -280,3 +290,17 @@ def reinit():
 def get_random_bytes(n):
     """Return the specified number of cryptographically-strong random bytes."""
     return _get_singleton().read(n)
+
+
+def check_for_rdrand():
+    global RDRAND_SUPPORTED
+    try:
+        from cryptoe_ext import rdrand_64
+
+        rdrand_64(1)
+    except MemoryError:
+        RDRAND_SUPPORTED = False
+    RDRAND_SUPPORTED = True
+
+
+check_for_rdrand()

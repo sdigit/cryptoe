@@ -13,19 +13,17 @@ A secondary goal is the avoidance of OpenSSL and also the avoidance of code lice
 ### Dependencies ###
 Cryptoe requires the following additional python packages:
 1. PyCrypto
-2. hkdf [introduces a dependency on OpenSSL until it can be replaced with another implementation]
+2. whirlpool
 3. sqlalchemy
-4. whirlpool
 
-Cryptoe assumes the following hardware is present:
-1. An Intel CPU which implements the RDRAND instruction
+Cryptoe is written to take advantage of RDRAND if present. If not present, heavier use will be made of /dev/urandom. Fortuna is used in either case, the primary difference is speed.
 
 ### TODO ###
 1. Add unit tests
-1.1. SHAd256 test vectors (done, not yet in git)
-1.2. Whirlpool test vectors
-1.3. KW and KWP test vectors
-2. Add ciphers
-2.1. AES will use PyCrypto's implementation
-2.2. Serpent code needs CBC and CTR modes written for it, or another implementation used.
-2.3. Twofish code needs CBC and CTR modes written for it, or another implementation used.
+1.1. KW and KWP test vectors
+2. Secret key storage
+2.1. Determine best method or combination of methods to store unwrapped secret keys. Currently thinking of using the Linux kernel keystore, but what about BSD?
+3. Add ciphers
+3.1. AES will use PyCrypto's implementation
+3.2. Serpent code needs CBC and CTR modes written for it, or another implementation used.
+3.3. Twofish code needs CBC and CTR modes written for it, or another implementation used.
