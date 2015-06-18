@@ -34,8 +34,6 @@ from Crypto.Random import OSRNG
 from Crypto.Random.Fortuna import FortunaAccumulator
 from cryptoe.Hash import SHAd256
 
-RDRAND_SUPPORTED = 0
-
 
 class _EntropySource(object):
     def __init__(self, accumulator, src_num):
@@ -51,12 +49,17 @@ class _EntropySource(object):
 class _EntropyCollector(object):
     def __init__(self, accumulator):
         self.fancy = 1
-        self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHAd256)
         self._osrng = OSRNG.new()
+        if check_for_rdrand():
+            self._use_rdrand = True
+            self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHAd256)
+        else:
+            self._use_rdrand = False
+            self._hmac = HMAC.new(key=self._osrng.read(32), digestmod=SHAd256)
         es_num = 255
         self._osrng_es = _EntropySource(accumulator, es_num)
         es_num -= 1
-        if RDRAND_SUPPORTED:
+        if self._use_rdrand is True:
             cryptoe_ext.rdrand_64(1024)
             self._rdrand_es = _EntropySource(accumulator, es_num)
             es_num -= 1
@@ -68,7 +71,7 @@ class _EntropyCollector(object):
 
     def reinit(self):
 
-        if RDRAND_SUPPORTED:
+        if self._use_rdrand is True:
             # force RDRAND to reseed
             cryptoe_ext.rdrand_64(1024)
             self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHAd256)
@@ -110,7 +113,7 @@ class _EntropyCollector(object):
         h = None
         del t
         del h
-        if RDRAND_SUPPORTED:
+        if self._use_rdrand is True:
             # Feed Fortuna four 64bit RDRANDs, conditioned by SHA512
             cryptoe_ext.rdrand_64(1024)
             r = cryptoe_ext.rdrand_bytes(64)
@@ -293,14 +296,10 @@ def get_random_bytes(n):
 
 
 def check_for_rdrand():
-    global RDRAND_SUPPORTED
     try:
         from cryptoe_ext import rdrand_64
 
-        rdrand_64(1)
-    except MemoryError:
-        RDRAND_SUPPORTED = False
-    RDRAND_SUPPORTED = True
-
-
-check_for_rdrand()
+        assert (len(rdrand_64(32)) == 32)
+        return True
+    except NotImplementedError:
+        return False

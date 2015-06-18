@@ -2,11 +2,48 @@
 #include <string.h>
 #include <inttypes.h>
 
-#define RETRY_LIMIT 10
-#define RDRAND_SUCCESS 1
-#define RDRAND_NOT_READY -1
+#include "rdrand.h"
 
 #define _rdrand_step(x) ({ unsigned char err; asm volatile("rdrand %0; setc %1":"=r"(*x), "=qm"(err)); err; })
+
+#define __cpuid(x,y) asm volatile("cpuid":"=a"(x[0]),"=b"(x[1]),"=c"(x[2]),"=d"(x[3]):"a"(y))
+
+int RdRand_cpuid()
+{
+	int info[4] = {-1, -1, -1, -1};
+
+	/* Are we on an Intel processor? */
+	__cpuid(info, 0);
+	if (memcmp((void *) &info[1], (void *) "Genu", 4) != 0 ||
+		memcmp((void *) &info[3], (void *) "ineI", 4) != 0 ||
+		memcmp((void *) &info[2], (void *) "ntel", 4) != 0 ) {
+
+		return 0;
+	}
+
+	 __cpuid(info, /*feature bits*/1);
+	 int ecx = info[2];
+
+	/* Do we have RDRAND? */
+	 if ((ecx & RDRAND_MASK) == RDRAND_MASK)
+		 return 1;
+	 else
+		 return 0;
+}
+
+int RdRand_isSupported()
+{
+	static int supported = RDRAND_SUPPORT_UNKNOWN;
+
+	if (supported == RDRAND_SUPPORT_UNKNOWN)
+	{
+		if (RdRand_cpuid())
+			supported = RDRAND_SUPPORTED;
+		else
+			supported = RDRAND_UNSUPPORTED;
+	}
+	return (supported == RDRAND_SUPPORTED) ? 1 : 0;
+}
 
 int rdrand_64(uint64_t* x, int retry)
 {
@@ -106,7 +143,7 @@ int rdrand_get_bytes(unsigned int n, unsigned char *dest)
         temprand = 0;
     /* populate the central aligned block. Fail out if retry fails */
 
-    if ( (ret= rdrand_get_n_64(length, (uint64_t *)(blockstart))) != RDRAND_SUCCESS) 
+    if ( (ret= rdrand_get_n_64(length, (uint64_t *)(blockstart))) != RDRAND_SUCCESS)
         return ret;
     /* populate the final misaligned block */
     if (residual > 0)

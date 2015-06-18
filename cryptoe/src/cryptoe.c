@@ -31,12 +31,22 @@
 #include "cryptoe.h"
 #include "rdrand.h"
 
+static int RDRAND_OK = 0;
+
 /*
  * RDRAND
  */
 static PyObject *
-rdrand64(PyObject *self, PyObject *args)
+rdrand64(self,args)
+    PyObject *self;
+    PyObject *args;
 {
+    if (RDRAND_OK == 0)
+    {
+        PyErr_SetString(PyExc_NotImplementedError, "RDRAND is not supported on this platform");
+        return NULL;
+    }
+
     PyObject *item;
     uint64_t rdrand_arg;
     int rdrand_ret;
@@ -78,8 +88,16 @@ rdrand64(PyObject *self, PyObject *args)
 }
 
 static PyObject *
-rdrand_bytes(PyObject *self, PyObject *args)
+rdrand_bytes(self,args)
+    PyObject *self;
+    PyObject *args;
 {
+    if (RDRAND_OK == 0)
+    {
+        PyErr_SetString(PyExc_NotImplementedError, "RDRAND is not supported on this platform");
+        return NULL;
+    }
+
     uint64_t rdrand_arg;
     int rdrand_ret;
     unsigned char *buf;
@@ -130,6 +148,14 @@ static PyMethodDef cryptoe_ext_methods[] = {
 PyMODINIT_FUNC
 initcryptoe_ext(void)
 {
+    if (RdRand_isSupported())
+    {
+        RDRAND_OK = 1;
+    }
+    else
+    {
+        RDRAND_OK = 0;
+    }
     Py_InitModule("cryptoe_ext", cryptoe_ext_methods);
 }
 
