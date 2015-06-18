@@ -29,11 +29,11 @@ def db_unlock(url):
     if not KeyDB.db_ready(smaker):
         print('database not initialized')
         sys.exit(0)
-    dbkeys = KeyDB.get_db_keys(smaker)
+    dbkeys = KeyDB.unlock_db(smaker)
     if dbkeys is None:
         print('cannot unwrap database keys.')
     else:
-        print('dbkeys: %d entries' % len(dbkeys))
+        print('unlocking master key succeeded.')
     sys.exit(0)
 
 

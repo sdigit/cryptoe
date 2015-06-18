@@ -1,18 +1,21 @@
-from cryptoe.KeyMgmt import pack_hkdf_info, DEFAULT_PRF_HASH
+import sys
+
 from sqlalchemy import Column, Integer, String, Binary, DateTime, ForeignKey, \
     func
 from sqlalchemy.orm import relationship, backref
+
 from sqlalchemy.ext.declarative import declarative_base
 
+from cryptoe.KeyMgmt import pack_hkdf_info, DEFAULT_PRF_HASH
 from cryptoe.Hash import SHAd256
 from cryptoe.exceptions import SaltLengthError, KeyLengthError
 
 KEYDB_USER = 'KeyDB'
+KEYDB_PURPOSE_HMAC = '(KDB)HMAC'
 KEYDB_PURPOSE_MASTER = 'Root'
 KEYDB_PURPOSE_WRAPPING = 'Wrapping'
 KEYDB_PURPOSE_DERIVATION = 'KDF'
 KEYDB_PURPOSE_ENCRYPTION = 'Encryption'
-KEYDB_PURPOSE_AUTHENTICATION = 'HMAC'
 
 KEYDB_PBKDF2_ITERATIONS = 2 ** 17
 KEYDB_PASSPHRASE_LENGTH = 5
@@ -168,7 +171,7 @@ def init_keys(maker):
     mk.salt_id = mk_salt.id
 
     mk_key = newkey_pbkdf(klen, passphrase, mk_salt.salt, roundcount)
-    print('[INIT->PBKDF] %d-bit master key derived from user input' % len(mk_key) * 8)
+    print('[INIT->PBKDF] %d-bit master key derived from user input' % (len(mk_key) * 8))
     if len(mk_key) != klen:
         raise KeyLengthError('PBKDF key is not of requested length (%d != %d)' % (len(mk_key), klen))
     mk_hash = SHAd256.new(mk_key).hexdigest()
@@ -199,17 +202,17 @@ def init_keys(maker):
         [
             'authentication',
             32,
-            KEYDB_PURPOSE_AUTHENTICATION,
+            KEYDB_PURPOSE_HMAC,
         ],
         [
             'authentication',
             48,
-            KEYDB_PURPOSE_AUTHENTICATION,
+            KEYDB_PURPOSE_HMAC,
         ],
         [
             'authentication',
             64,
-            KEYDB_PURPOSE_AUTHENTICATION,
+            KEYDB_PURPOSE_HMAC,
         ],
     ]
 
@@ -232,20 +235,32 @@ def db_ready(maker):
 
     session = maker()
     try:
-        dbk = session.query(Key).filter_by(user=KEYDB_USER,
-                                           purpose=KEYDB_PURPOSE_MASTER).one()  # .order_by(desc(Key.created))
+        dbkeys = session.query(Key).filter_by(user=KEYDB_USER,
+                                              purpose=KEYDB_PURPOSE_HMAC).all()
+        if len(dbkeys) == 0:
+            return False
     except NoResultFound:
         session.close()
         return False
     except OperationalError:
         session.close()
         return False
-    wk = session.query(Key).filter_by(key_hash=dbk.related_hash).one()
+    authkeys = [64, 48, 32]
+    wkhashes = set()
+    for k in dbkeys:
+        print('[key %d (%s): %d bits' % (k.id, k.purpose, k.bits))
+        assert (str(k.salt.salt) == '')
+        if k.bits / 8 in authkeys:
+            authkeys.remove(k.bits / 8)
+            wkhashes.add(k.related_hash)
+    assert (len(authkeys) == 0)
+    assert (len(wkhashes) == 1)
+    wkhash = wkhashes.pop()
+    del wkhashes
+    wk = session.query(Key).filter_by(key_hash=wkhash).one()
     mk = session.query(MasterKey).filter_by(key_hash=wk.related_hash).one()
-    assert (len(dbk.salt.salt) == 0)
     assert (len(wk.salt.salt) == 32)
     assert (len(mk.salt.salt) == 32)
-    assert (len(dbk.key_hash) in [48, 64])
     assert (len(wk.key_hash) in [48, 64])
     assert (len(mk.key_hash) in [48, 64])
     assert (wk.user == KEYDB_USER and wk.purpose == KEYDB_PURPOSE_WRAPPING)
@@ -307,17 +322,16 @@ def open_db(dbu):
     return sm
 
 
-def get_db_keys(maker):
+def unlock_db(maker):
     from getpass import getpass
-    from cryptoe.KeyMgmt import newkey_pbkdf, newkey_hkdf
-    from cryptoe.KeyWrap import KWP
+    from cryptoe.KeyMgmt import newkey_pbkdf
     from utils import yubikey_passphrase_cr
 
     session = maker()
-
-    dbk = session.query(Key).filter_by(user=KEYDB_USER, purpose=KEYDB_PURPOSE_MASTER).order_by(Key.created.desc()).one()
-    wk = session.query(Key).filter_by(key_hash=dbk.related_hash).one()
-    mk = session.query(MasterKey).filter_by(key_hash=wk.related_hash).one()
+    mk = session.query(MasterKey).order_by(MasterKey.created.desc()).one()
+    if not mk:
+        print('[UNLOCK] no master key found. cannot proceed.')
+        sys.exit(0)
 
     pw = getpass('passphrase: ').rstrip()
     pw = yubikey_passphrase_cr(pw)
@@ -325,19 +339,5 @@ def get_db_keys(maker):
     mk_key_hash = SHAd256.new(mk_key).hexdigest()
     if mk_key_hash != mk.key_hash:
         return None
-    wk_key = newkey_hkdf(32,
-                         mk_key,
-                         wk.salt.salt,
-                         pack_hkdf_info(wk.purpose, wk.user))
-    wk_key_hash = SHAd256.new(wk_key).hexdigest()
-    if wk_key_hash != wk.key_hash:
-        return None
-
-    dbk_key = KWP.unwrap(wk_key, dbk.key)
-    dbk_key_hash = SHAd256.new(dbk_key).hexdigest()
-    if dbk_key_hash != dbk.key_hash:
-        return None
     else:
-        print('database key hash verified')
-    session.close()
-    return [dbk_key, dbk_key_hash]
+        return mk_key

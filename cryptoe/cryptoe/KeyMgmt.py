@@ -1,16 +1,55 @@
-from math import floor, ceil
 import os
 import struct
 import time
 
-from Crypto.Hash import HMAC, SHA512, SHA256
+from Crypto.Hash import HMAC, SHA512
 from Crypto.Protocol.KDF import PBKDF2
-import hkdf
+import math
 
 from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS, MINIMUM_PBKDF2_ITERATIONS
-from cryptoe.exceptions import DerivationError, LowIterationCount
+from cryptoe.exceptions import DerivationError, LowIterationCount, KeyLengthError
 
 DEFAULT_PRF_HASH = SHA512
+
+
+def hkdf_extract(salt, input_key_material, hash_obj=SHA512):
+    """
+    Extract a pseudorandom key suitable for use with hkdf_expand
+    from the input_key_material and a salt using HMAC with the
+    provided hash (default SHA-512).
+
+    salt should be a random, application-specific byte string. If
+    salt is None or the empty string, an all-zeros string of the same
+    length as the hash's block size will be used instead per the RFC.
+
+    See the HKDF draft RFC and paper for usage notes.
+    """
+    assert hasattr(hash_obj, 'digest_size')
+    hash_len = hash_obj.digest_size
+    assert isinstance(salt, str)
+    if salt is None or len(salt) == 0:
+        salt = chr(0) * hash_len
+    return HMAC.new(salt, input_key_material, digestmod=hash_obj).digest()
+
+
+def hkdf_expand(pseudo_random_key, info="", length=32, hash_obj=SHA512):
+    """
+    Expand `pseudo_random_key` and `info` into a key of length `bytes` using
+    HKDF's expand function based on HMAC with the provided hash (default
+    SHA-512). See the HKDF draft RFC and paper for usage notes.
+    """
+    assert hasattr(hash_obj, 'digest_size')
+    hash_len = hash_obj.digest_size
+    length = length
+    if length > 255 * hash_len:
+        raise Exception('Requested length exceeds 255*%d' % hash_len)
+    blocks_needed = int(math.ceil(float(length) / float(hash_len)))
+    okm = ''
+    output_block = ''
+    for counter in range(blocks_needed):
+        output_block = HMAC.new(pseudo_random_key, output_block + info + chr(counter + 1), digestmod=hash_obj).digest()
+        okm += output_block
+    return okm[:length]
 
 
 # pack_hkdf_info and unpack_hkdf_info encode and decode the otherinfo data used by the extraction step of HKDF.
@@ -117,12 +156,12 @@ def gather_easy_entropy(size):
     hm = HMAC.new('\x00' * (size / 8), digestmod=SHA512)  # Avoid extension attacks
     # 64 bits from time
     tm = time.time()
-    hm.update(struct.pack('!L', int(2 ** 30 * (tm - floor(tm)))))
-    hm.update(struct.pack('!L', int(ceil(tm))))
+    hm.update(struct.pack('!L', int(2 ** 30 * (tm - math.floor(tm)))))
+    hm.update(struct.pack('!L', int(math.ceil(tm))))
     del tm
     # 32 from clock
     ck = time.clock()
-    hm.update(struct.pack('!L', int(2 ** 30 * (ck - floor(ck)))))
+    hm.update(struct.pack('!L', int(2 ** 30 * (ck - math.floor(ck)))))
     del ck
     # 32 from PID * PPID
     pp = (os.getpid() * os.getppid()) % (2 ** 32 - 1)
@@ -170,14 +209,14 @@ def newkey_pbkdf(klen=32, k_in='', salt='', rounds=DEFAULT_PBKDF2_ITERATIONS, pr
         64: SHA512,
     }
 
-    if klen not in [32,48,64]:
+    if klen not in [32, 48, 64]:
         raise KeyLengthError('Key length %d is not supported by this module.' % klen)
     if rounds < MINIMUM_PBKDF2_ITERATIONS:
         raise LowIterationCount('PBKDF2 should use >= %d iterations' % MINIMUM_PBKDF2_ITERATIONS)
     if not prf:
         hashobj = hash_choice[klen]
         ho_name = hashobj.__name__.split('.')[-1]
-        print('[PBKDF] Deriving %d-bit key using HMAC-%s' % (klen*8,ho_name))
+        print('[PBKDF] Deriving %d-bit key using HMAC-%s' % (klen * 8, ho_name))
         prf = lambda x, y: HMAC.new(x, y, hash_choice[klen]).digest()
 
     k = PBKDF2(k_in, salt, dkLen=klen, count=rounds, prf=prf)
@@ -198,7 +237,7 @@ def newkey_hkdf(klen=32, k_in='', salt='', otherinfo=''):
     :type klen: int
     :type k_in: str
     :type salt: str
-    :type otherinfo: bytearray
+    :type otherinfo: str
     """
     assert (klen > 0)
     assert (klen % 8 == 0)
@@ -220,8 +259,7 @@ def newkey_hkdf(klen=32, k_in='', salt='', otherinfo=''):
     }
 
     ho_name = hash_choice[klen].__name__.split('.')[-1]
-    print('[HKDF] Deriving %d-bit key using HMAC-%s' % (klen*8,ho_name))
-    prk = hkdf.hkdf_extract(salt, k_in, hash=hash_choice[klen])
-    k = hkdf.hkdf_expand(prk, otherinfo, klen, hash=hash_choice[klen])
+    print('[HKDF] Deriving %d-bit key using HMAC-%s' % (klen * 8, ho_name))
+    prk = hkdf_extract(salt, k_in, hash_obj=hash_choice[klen])
+    k = hkdf_expand(prk, otherinfo, klen, hash_obj=hash_choice[klen])
     return k
-
