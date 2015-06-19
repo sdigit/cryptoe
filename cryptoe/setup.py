@@ -6,6 +6,9 @@ cryptoe_ext = Extension('cryptoe_ext',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                         sources=['src/rng/rdrand.c',
                                  'src/cryptoe.c'])
+KernelKeyUtil = Extension('KernelKeyUtil',
+                          sources=['src/secrets/KernelKeyUtil.c'],
+                          libraries=['keyutils'])
 shad256_ext = Extension('cryptoe.Hash.SHAd256',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                         sources=['src/hash/SHAd256.c'])
@@ -31,6 +34,7 @@ setup(
     ext_modules=[
         cryptoe_ext,
         shad256_ext,
+        KernelKeyUtil,
     ],
     requires=[
         'Crypto', 'hkdf', 'sqlalchemy', 'whirlpool',

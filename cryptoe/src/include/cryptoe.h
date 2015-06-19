@@ -26,9 +26,13 @@
 
 #ifndef CRYPTOE_H
 #define CRYPTOE_H
-
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
 #include <sys/types.h>
+
 int pad(char *,size_t,size_t);
+static PyObject *rdrand64(PyObject *,PyObject *);
+static PyObject *rdrand_bytes(PyObject *,PyObject *);
 
 #endif /* CRYPTOE_H */
 

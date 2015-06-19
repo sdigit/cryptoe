@@ -50,8 +50,8 @@ POSSIBILITY OF SUCH DAMAGE. */
 
 #define RETRY_LIMIT 10
 
-int RdRand_cpuid();
-int RdRand_isSupported();
+int RdRand_cpuid(void);
+int RdRand_isSupported(void);
 int rdrand_64(uint64_t* x, int retry);
 int rdrand_get_n_64(unsigned int n, uint64_t* x);
 int rdrand_get_bytes(unsigned int n, unsigned char *buffer);
