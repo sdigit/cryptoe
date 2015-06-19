@@ -52,8 +52,6 @@ def hkdf_expand(pseudo_random_key, info="", length=32, hash_obj=SHA512):
     return okm[:length]
 
 
-# pack_hkdf_info and unpack_hkdf_info encode and decode the otherinfo data used by the extraction step of HKDF.
-#
 # RFC5869 states in section 3.2:
 #
 # 3.2.  The 'info' Input to HKDF
@@ -109,47 +107,39 @@ def hkdf_expand(pseudo_random_key, info="", length=32, hash_obj=SHA512):
 #
 # The final info bit string is packed in big-endian byte order.
 #
-# The overall 64-byte length was chosen mostly for convenience
-#
 # [  size  ]    name    description
 # ---------------------------------
-# [248 bits]    LABEL
+# [240 bits]    LABEL
 # ---------------------------------
 # [  8 bits]    len     length of the following string in bytes
-# [240 bits]    txt     string identifying the purpose of the derived keying material
+# [232 bits]    txt     string identifying the purpose of the derived keying material
 # ---------------------------------
 # [  8 bits] zero byte (to separate label and context per SP800-56C)
 # ---------------------------------
-# [256 bits] CONTEXT
+# [240 bits] CONTEXT
 # ---------------------------------
 # [  8 bits]    len     length of the final binary string CONTEXT in bytes
-# [248 bits]    txt     string describing what/who will use the derived keying material
+# [232 bits]    txt     string describing what/who will use the derived keying material
 
+# This has been modified to produce a 30-byte salt rather than a 64-byte salt.
+# See http://eprint.iacr.org/2013/382.pdf for why.
 
 def pack_hkdf_info(label, context):
     label_struct = struct.Struct('>B30s')
-    context_struct = struct.Struct('>B31s')
-    buf = bytearray(64)
-    LABEL_LEN = 31
-    CONTEXT_LEN = 32
-    label_struct.pack_into(buf, 0, LABEL_LEN, str(label))
+    context_struct = struct.Struct('>B30s')
+    buf = bytearray(61)
+    LABEL_LEN = 30
+    CONTEXT_LEN = 30
+    lbuf = bytearray(LABEL_LEN)
+    cbuf = bytearray(CONTEXT_LEN)
+    label_struct.pack_into(lbuf, 0, str(label))
+    context_struct.pack_into(cbuf, 0, str(context))
     struct.pack_into('>B', buf, 31, 0x00)
-    context_struct.pack_into(buf, 32, CONTEXT_LEN, str(context))
-    return bytes(buf)
-
-
-def unpack_hkdf_info(buf):
-    if (len(buf)) != 64:
-        raise DerivationError('HKDF info of unexpected length; cannot unpack with normal format.')
-    label_struct = struct.Struct('>B30s')
-    context_struct = struct.Struct('>B31s')
-    l = label_struct.unpack_from(buf, 0)
-    c = context_struct.unpack_from(buf, 32)
-    vals = {
-        'label': l[1].rstrip(),
-        'context': c[1].rstrip(),
-    }
-    return vals
+    h = HMAC.new(label,digestmod=SHAd256)
+    h.update(bytes(lbuf))
+    h.update('\x00')
+    h.update(bytes(cbuf)) 
+    return h.digest[:30]
 
 
 def gather_easy_entropy(size):
