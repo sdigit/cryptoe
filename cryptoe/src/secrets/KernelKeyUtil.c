@@ -17,15 +17,27 @@
 #define KDB_PREFIX_LEN      9
 #define KDB_DESC_BUFSIZE     1024
 
+typedef struct {
+    size_t k_cnt;
+    key_serial_t *k_keys;
+} keyring_t;
+
+static char desc_buffer[KDB_DESC_BUFSIZE];
+static keyring_t *alloc_keyring(size_t);
+static void free_keyring(keyring_t *);
+static int prefix_desc(ssize_t,const char *);
+static keyring_t *read_keyring(key_serial_t);
+
 static PyObject *new_keyring(PyObject *,PyObject *);
 static PyObject *destroy_keyring(PyObject *,PyObject *);
 static PyObject *find_keyring(PyObject *,PyObject *);
 static PyObject *store_key(PyObject *,PyObject *);
+// static PyObject *read_key(PyObject *,PyObject *);
+static PyObject *list_keyring(PyObject *,PyObject *);
 
-static int prefix_desc(ssize_t,const char *);
-
-static char desc_buffer[KDB_DESC_BUFSIZE];
-
+/*
+ * Helper functions not exposed to the Python API
+ */
 int
 prefix_desc(len,str)
     ssize_t len;
@@ -53,6 +65,69 @@ prefix_desc(len,str)
     strlcat(desc_buffer,str,KDB_DESC_BUFSIZE);
     return 0;
 }
+
+static keyring_t *
+alloc_keyring(nkeys)
+    size_t nkeys;
+{
+    keyring_t *r;
+
+    r = (keyring_t *)malloc(sizeof(keyring_t));
+    if (r == NULL)
+    {
+        abort();
+    }
+
+    r->k_cnt = nkeys;
+    r->k_keys = (key_serial_t *)calloc(nkeys,sizeof(key_serial_t));
+    return r;
+}
+
+static void
+free_keyring(kr)
+    keyring_t *kr;
+{
+    free(kr->k_keys);
+    free(kr);
+}
+
+
+static keyring_t *
+read_keyring(kr)
+    key_serial_t kr;
+{
+    key_serial_t sz,ret;
+    keyring_t *krs;
+    long nkey;
+
+    sz = keyctl(KEYCTL_READ,kr,NULL,0);
+    if (sz == -1 || sz == 0)
+    {
+        return 0;
+    }
+
+    nkey = sz / sizeof(key_serial_t);
+    krs = alloc_keyring(sz / sizeof(key_serial_t));
+    krs->k_cnt = nkey;
+    
+    ret = keyctl(KEYCTL_READ,kr,krs->k_keys,sz);
+    if (ret != sz)
+    {
+        free_keyring(krs);
+        return NULL;
+    }
+    else
+    {
+        return krs;
+    }
+}
+/*
+ * Create a keyring
+ */
+PyDoc_STRVAR(
+    new_keyring_doc,
+    "new_keyring(name)\n"
+    "Create a keyring, returning the serial number");
 
 static PyObject *
 new_keyring(self,args)
@@ -112,6 +187,44 @@ new_keyring(self,args)
     return key_serial;
 }
 
+/*
+ * destroy a keyring
+ */
+PyDoc_STRVAR(
+    destroy_keyring_doc,
+     "destroy_keyring(keyring_serial)\n"
+     "Destroy the specified keyring (first clear and then invalidate it)\n");
+
+static PyObject *
+destroy_keyring(self,args)
+    PyObject *self;
+    PyObject *args;
+{
+    key_serial_t ks;
+    long rv = 0;
+
+    if (!PyArg_ParseTuple(args, "l", &ks))
+        return NULL;
+
+    rv = keyctl(KEYCTL_CLEAR,ks);
+    if (rv == 0)
+    {
+        rv = keyctl_invalidate(ks);
+    }
+
+    PyObject *ret;
+    ret = PyInt_FromLong(rv);
+    return ret;
+}
+
+/*
+ * Find a keyring, returning the serial
+ */
+PyDoc_STRVAR(
+    find_keyring_doc,
+     "find_keyring(name)\n"
+     "Find the named keyring, returning its serial number");
+
 static PyObject *
 find_keyring(self,args)
     PyObject *self;
@@ -139,27 +252,13 @@ find_keyring(self,args)
     return keyring;
 }
 
-static PyObject *
-destroy_keyring(self,args)
-    PyObject *self;
-    PyObject *args;
-{
-    key_serial_t ks;
-    long rv = 0;
-
-    if (!PyArg_ParseTuple(args, "l", &ks))
-        return NULL;
-
-    rv = keyctl(KEYCTL_CLEAR,ks);
-    if (rv == 0)
-    {
-        rv = keyctl_invalidate(ks);
-    }
-
-    PyObject *ret;
-    ret = PyInt_FromLong(rv);
-    return ret;
-}
+/*
+ * store a key, linked to the specified keyring
+ */
+PyDoc_STRVAR(
+    store_key_doc,
+    "store_key(keyring serial,description,key)\n"
+    "Store a key in the specified keyring\n");
 
 static PyObject *
 store_key(self,args)
@@ -234,33 +333,50 @@ store_key(self,args)
     ret = PyInt_FromLong(ks);
     return ret;
 }
-    
+
+PyDoc_STRVAR(
+    list_keyring_doc,
+    "list_keyring(keyring serial)"
+    "\n"
+    "Returns a tuple of key serials found in the specified keyring\n");
+
+static PyObject *
+list_keyring(self,args)
+    PyObject *self;
+    PyObject *args;
+{
+    keyring_t *krs;
+    long kr;
+    if (!PyArg_ParseTuple(args, "l", &kr))
+        return NULL;
+
+    krs = read_keyring(kr);
+    if (krs == NULL)
+    {
+        PyObject *ret;
+        ret = PyTuple_New(0);
+        return ret;
+    }
+
+    size_t i;
+    PyObject *ret, *item;
+    ret = PyTuple_New(krs->k_cnt);
+    for (i=0;i<krs->k_cnt;i++)
+    {
+        item = PyInt_FromLong(krs->k_keys[i]);
+        PyTuple_SetItem(ret,i,item);
+    }
+    free_keyring(krs);
+    return ret;
+}
+
 static PyMethodDef KernelKeyUtil_methods[] = {
-    {"new_keyring",
-     new_keyring,
-     METH_VARARGS,
-     "new_keyring(name)\n"
-     "Create a keyring, returning the serial number"},
-    {"destroy_keyring",
-     destroy_keyring,
-     METH_VARARGS,
-     "destroy_keyring(keyring_serial)\n"
-     "Destroy the specified keyring (first clear and then invalidate it)\n"},
-    {"find_keyring",
-     find_keyring,
-     METH_VARARGS,
-     "find_keyring(name)\n"
-     "Find the named keyring, returning its serial number"},
-    {"store_key",
-     store_key,
-     METH_VARARGS,
-    "store_key(keyring serial,description,key)\n"
-    "Store a key in the specified keyring\n"},
-    {"read_key(key serial)",
-     store_key,
-     METH_VARARGS,
-    "store_key(keyring serial,description,key)\n"
-    "Store a key in the specified keyring\n"},
+    {"new_keyring",new_keyring,METH_VARARGS,new_keyring_doc},
+    {"destroy_keyring",destroy_keyring,METH_VARARGS,destroy_keyring_doc},
+    {"find_keyring",find_keyring,METH_VARARGS,find_keyring_doc},
+    {"store_key",store_key,METH_VARARGS,store_key_doc},
+    {"list_keyring",list_keyring,METH_VARARGS,list_keyring_doc},
+    /* {"read_key",read_key,METH_VARARGS,read_key_doc}, */
     {NULL,NULL,0,NULL}
 };
 

@@ -8,7 +8,8 @@ RDRAND = Extension('cryptoe.Hardware.RDRAND',
                             'src/rng/pyrdrand.c'])
 KernelKeyUtil = Extension('cryptoe.OS.KernelKeyUtil',
                           sources=['src/secrets/KernelKeyUtil.c'],
-                          libraries=['keyutils','bsd'])
+                          libraries=['keyutils', 'bsd'],
+                          extra_compile_args=['-O0','-g'])
 shad256_ext = Extension('cryptoe.Hash.SHAd256',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                         sources=['src/hash/SHAd256.c'])
@@ -16,7 +17,7 @@ setup(
     name='cryptoe',
     author='Sean Davis',
     author_email='cryptoe@endersgame.net',
-    version='1.13.0a',   # see also cryptoe/__init__.py
+    version='1.13.0a',  # see also cryptoe/__init__.py
     url='https://github.com/sdigit/cryptoe/',
     description='Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
     packages=[
@@ -24,6 +25,7 @@ setup(
         'cryptoe.Hash',
         'cryptoe.Random',
         'cryptoe.Hardware',
+        'cryptoe.OS',
     ],
     py_modules=[
         'cryptoe.exceptions',
