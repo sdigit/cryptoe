@@ -2,11 +2,11 @@
 import os
 from distutils.core import setup, Extension
 
-cryptoe_ext = Extension('cryptoe_ext',
-                        include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
-                        sources=['src/rng/rdrand.c',
-                                 'src/cryptoe.c'])
-KernelKeyUtil = Extension('KernelKeyUtil',
+RDRAND = Extension('cryptoe.Hardware.RDRAND',
+                   include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
+                   sources=['src/rng/rdrand.c',
+                            'src/rng/pyrdrand.c'])
+KernelKeyUtil = Extension('cryptoe.OS.KernelKeyUtil',
                           sources=['src/secrets/KernelKeyUtil.c'],
                           libraries=['keyutils'])
 shad256_ext = Extension('cryptoe.Hash.SHAd256',
@@ -16,13 +16,14 @@ setup(
     name='cryptoe',
     author='Sean Davis',
     author_email='cryptoe@endersgame.net',
-    version='1.12.1',   # see also cryptoe/__init__.py
+    version='1.13.0a',   # see also cryptoe/__init__.py
     url='https://github.com/sdigit/cryptoe/',
     description='Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
     packages=[
         'cryptoe',
         'cryptoe.Hash',
         'cryptoe.Random',
+        'cryptoe.Hardware',
     ],
     py_modules=[
         'cryptoe.exceptions',
@@ -32,7 +33,7 @@ setup(
         'cryptoe.KeyWrap',
     ],
     ext_modules=[
-        cryptoe_ext,
+        RDRAND,
         shad256_ext,
         KernelKeyUtil,
     ],

@@ -28,14 +28,17 @@
 
 #include <Python.h>
 #include <inttypes.h>
-#include "cryptoe.h"
 #include "rdrand.h"
+
+static PyObject *rdrand64(PyObject *, PyObject *);
+static PyObject *rdrand_bytes(PyObject *, PyObject *);
 
 static int RDRAND_OK = 0;
 
 /*
  * RDRAND
  */
+PyDoc_STRVAR(rdrand64_doc,"rdrand_64(num): return num random numbers\n");
 static PyObject *
 rdrand64(self,args)
     PyObject *self;
@@ -76,7 +79,7 @@ rdrand64(self,args)
         retval = PyTuple_New(rdrand_arg);
         for (i=0;i<rdrand_arg;i++)
         {
-            item = PyLong_FromUnsignedLongLong(data[i]);
+            item = PyInt_FromLong(data[i]);
             PyTuple_SetItem(retval,i,item);
         }
         free(data);
@@ -87,6 +90,7 @@ rdrand64(self,args)
     }
 }
 
+PyDoc_STRVAR(rdrandbytes_doc,"rdrand_bytes(num): return num random bytes\n");
 static PyObject *
 rdrand_bytes(self,args)
     PyObject *self;
@@ -131,22 +135,53 @@ rdrand_bytes(self,args)
     }
 }
 
+PyDoc_STRVAR(
+    RDRAND_doc,
+    "Intel RDRAND Random Number Generator\n"
+    "\n"
+    "The following description comes from:\n"
+    "Intel(r) 64 and IA-32 Architectures Software Developer's Manual\n"
+    "Combined Volumes: 1, 2A, 2B, 2C, 3A, 3B and 3C\n"
+    "\n"
+    "RDRAND returns random numbers that are supplied by a cryptographically secure,\n"
+    "deterministic random bit generator DRBG. The DRBG is designed to meet the NIST\n"
+    "SP 800-90A standard. The DRBG is re-seeded frequently from an on-chip\n"
+    "non-deterministic entropy source to guarantee data returned by RDRAND is\n"
+    "statistically uniform, non-periodic and non-deterministic.\n"
+    "\n"
+    "In order for the hardware design to meet its security goals, the random number\n"
+    "generator continuously tests itself and the random data it is generating.\n"
+    "Runtime failures in the random number generator circuitry or statistically\n"
+    "anomalous data occurring by chance will be detected by the self test hardware\n"
+    "and flag the resulting data as being bad. In such extremely rare cases, the\n"
+    "RDRAND instruction will return no data instead of bad data.\n"
+    "\n"
+    "    >>> from Cryptoe.Hardware import RDRAND\n"
+    "    >>>\n"
+    "    >>> rand_int = RDRAND.rdrand_64(num)\n"
+    "    >>> rand_bytes = RDRAND.rdrand_bytes(num)\n"
+    "\n"
+    "rdrand_64 will return the specified number of random 64-bit values.\n"
+    "\n"
+    "rdrand_bytes will return the specified number of random bytes.\n"
+    "\n");
+
 /*
  * Methods implemented by cryptoe for export to Python
  */
-static PyMethodDef cryptoe_ext_methods[] = {
+static PyMethodDef RDRAND_methods[] = {
     {"rdrand_64",
      rdrand64,METH_VARARGS,
-     "Return 64-bit integers from RDRAND"},
+     rdrand64_doc},
     {"rdrand_bytes",
      rdrand_bytes,
      METH_VARARGS,
-     "Return random bytes"},
+     rdrandbytes_doc},
     {NULL,NULL,0,NULL}
 };
 
 PyMODINIT_FUNC
-initcryptoe_ext(void)
+initRDRAND(void)
 {
     if (RdRand_isSupported())
     {
@@ -156,6 +191,5 @@ initcryptoe_ext(void)
     {
         RDRAND_OK = 0;
     }
-    Py_InitModule("cryptoe_ext", cryptoe_ext_methods);
+    Py_InitModule3("cryptoe.Hardware.RDRAND", RDRAND_methods, RDRAND_doc);
 }
-

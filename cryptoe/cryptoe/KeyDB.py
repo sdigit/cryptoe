@@ -2,6 +2,7 @@ import sys
 
 from sqlalchemy import Column, Integer, String, Binary, DateTime, ForeignKey, \
     func
+import sqlalchemy
 from sqlalchemy.orm import relationship, backref
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -243,6 +244,9 @@ def db_ready(maker):
         session.close()
         return False
     except OperationalError:
+        session.close()
+        return False
+    except sqlalchemy.exc.ProgrammingError:
         session.close()
         return False
     authkeys = [64, 48, 32]

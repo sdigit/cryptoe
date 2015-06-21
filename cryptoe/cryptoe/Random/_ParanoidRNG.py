@@ -21,7 +21,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # ===================================================================
-import cryptoe_ext
+
 import os
 import threading
 import struct
@@ -48,11 +48,13 @@ class _EntropySource(object):
 
 class _EntropyCollector(object):
     def __init__(self, accumulator):
+        from cryptoe.Hardware import RDRAND
+        self._rdrand = RDRAND
         self.fancy = 1
         self._osrng = OSRNG.new()
         if check_for_rdrand():
             self._use_rdrand = True
-            self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHAd256)
+            self._hmac = HMAC.new(key=self._rdrand.rdrand_bytes(32), digestmod=SHAd256)
         else:
             self._use_rdrand = False
             self._hmac = HMAC.new(key=self._osrng.read(32), digestmod=SHAd256)
@@ -60,7 +62,7 @@ class _EntropyCollector(object):
         self._osrng_es = _EntropySource(accumulator, es_num)
         es_num -= 1
         if self._use_rdrand is True:
-            cryptoe_ext.rdrand_64(1024)
+            self._rdrand.rdrand_64(1024)
             self._rdrand_es = _EntropySource(accumulator, es_num)
             es_num -= 1
 
@@ -73,11 +75,11 @@ class _EntropyCollector(object):
 
         if self._use_rdrand is True:
             # force RDRAND to reseed
-            cryptoe_ext.rdrand_64(1024)
-            self._hmac = HMAC.new(key=cryptoe_ext.rdrand_bytes(32), digestmod=SHAd256)
+            self._rdrand.rdrand_64(1024)
+            self._hmac = HMAC.new(key=self._rdrand.rdrand_bytes(32), digestmod=SHAd256)
             for i in range(2):
                 # force RDRAND to reseed
-                block = cryptoe_ext.rdrand_bytes(32 * 32)
+                block = self._rdrand.rdrand_bytes(32 * 32)
                 # force RDRAND to reseed
                 for p in range(32):
                     self._rdrand_es.feed(block[p * 32:(p + 1) * 32])
@@ -85,7 +87,7 @@ class _EntropyCollector(object):
                 del block
             # Add 256 bits to each of the 32 pools, twice, from OSRNG. Force RDRAND reseed as it is used
             # by the linux kernel PRNG.
-            cryptoe_ext.rdrand_64(1024)
+            self._rdrand.rdrand_64(1024)
         else:
             self._hmac = HMAC.new(key=self._osrng.read(32), digestmod=SHAd256)
         for i in range(2):
@@ -115,8 +117,8 @@ class _EntropyCollector(object):
         del h
         if self._use_rdrand is True:
             # Feed Fortuna four 64bit RDRANDs, conditioned by SHA512
-            cryptoe_ext.rdrand_64(1024)
-            r = cryptoe_ext.rdrand_bytes(64)
+            self._rdrand.rdrand_64(1024)
+            r = self._rdrand.rdrand_bytes(64)
             r = SHA512.new(r).digest()[:32]
             self._rdrand_es.feed(r)
             r = None
@@ -297,9 +299,9 @@ def get_random_bytes(n):
 
 def check_for_rdrand():
     try:
-        from cryptoe_ext import rdrand_64
+        from cryptoe.Hardware import RDRAND
 
-        assert (len(rdrand_64(32)) == 32)
+        assert (len(RDRAND.rdrand_64(32)) == 32)
         return True
     except NotImplementedError:
         return False
