@@ -8,7 +8,7 @@ RDRAND = Extension('cryptoe.Hardware.RDRAND',
                             'src/rng/pyrdrand.c'])
 KernelKeyUtil = Extension('cryptoe.OS.KernelKeyUtil',
                           sources=['src/secrets/KernelKeyUtil.c'],
-                          libraries=['keyutils'])
+                          libraries=['keyutils','bsd'])
 shad256_ext = Extension('cryptoe.Hash.SHAd256',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                         sources=['src/hash/SHAd256.c'])
