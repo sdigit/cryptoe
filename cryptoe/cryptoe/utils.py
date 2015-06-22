@@ -33,7 +33,13 @@ def long2ba(val):
 
 
 def pad(what, size):
-    """PKCS#7 padding"""
+    """
+    PKCS#7 padding
+
+    :param what: input data
+    :param size: size desired after padding
+    :return: padded data
+    """
     if len(what) > size:
         raise ValueError('length exceeds desired padded length')
     elif len(what) == size:
@@ -50,6 +56,18 @@ def pad(what, size):
 
 
 def yubikey_passphrase_cr(passphrase):
+    """
+    This function:
+     Takes an input passphrase
+     generates the SHAd256 hash of it
+     sends that hash to a Yubikey configured for HMAC-SHA1 on slot 2
+     computes the whirlpool hash of the HMAC-SHA1 response received from the Yubikey
+     returns the whirlpool hash
+    :param passphrase: passphrase (plaintext)
+    :type passphrase: str
+    :return: whirlpool digest (hex)
+    :rtype: str
+    """
     try:
         import yubico
     except ImportError:

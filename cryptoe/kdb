@@ -18,6 +18,14 @@ def usage():
 
 
 def db_create(url):
+    """
+    Initialize a new KeyDB
+
+    :param url: sqlalchemy database url
+    :type url: str
+    :return: None
+    :rtype: NoneType
+    """
     smaker = KeyDB.initialize_db(url)
     if smaker:
         KeyDB.init_keys(smaker)
@@ -25,6 +33,13 @@ def db_create(url):
 
 
 def db_unlock(url):
+    """
+    Verify that database keys can be unwrapped using re-derived wrapping keys
+    :param url: sqlalchemy database url
+    :type url: str
+    :return: None
+    :rtype: NoneType
+    """
     smaker = KeyDB.open_db(url)
     if not KeyDB.db_ready(smaker):
         print('database not initialized')
@@ -44,6 +59,7 @@ if __name__ == '__main__':
         usage()
     cmd = sys.argv[1]
     dbu = sys.argv[2]
+    # SQLAlchemy supports more than just sqlite and postgresql, but KeyDB has not been tested with anything else yet.
     if dbu.find('://') == -1 or (not dbu.startswith('sqlite') and not dbu.startswith('postgresql')):
         usage()
     func = globals()[command_map[sys.argv[1]][0]]

@@ -26,6 +26,9 @@ Base = declarative_base()
 
 
 class HashAlgo(Base):
+    """
+    This table holds the names, block sizes, and digest sizes of hash algorithms used in cryptoe.
+    """
     __tablename__ = 'hash_algorithms'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
@@ -34,12 +37,20 @@ class HashAlgo(Base):
 
 
 class Salt(Base):
+    """
+    This table stores salts used for key derivation elsewhere, in cases where the key itself is not stored.
+    """
     __tablename__ = 'salts'
     id = Column(Integer, primary_key=True)
     salt = Column(Binary, nullable=False, unique=True)
 
 
 class MasterKey(Base):
+    """
+    This table stores metadata used for regenerating database master keys (eg. with PBKDF).
+    Once support for more robust initial keying is implemented (using smart cards for instance) this will likely be
+    rethought.
+    """
     __tablename__ = 'master_keys'
     id = Column(Integer, primary_key=True)
     created = Column(DateTime, server_default=func.now(), nullable=False)
@@ -52,6 +63,9 @@ class MasterKey(Base):
 
 
 class Key(Base):
+    """
+    This table stores private keys, wrapped using KW or KWP.
+    """
     __tablename__ = 'keys'
     id = Column(Integer, primary_key=True)
     created = Column(DateTime, server_default=func.now(), nullable=False)
@@ -97,6 +111,14 @@ def new_random_key(maker, kek, purpose, user, klen=32):
 
 
 def new_salt(db_session, slen):
+    """
+    Generate a new random salt and store it in the database
+
+    :param db_session: sqlalchemy session
+    :param slen: salt length (bytes)
+    :type slen: int
+    :return: salt record
+    """
     from cryptoe import Random
 
     rbg = Random.new()
@@ -319,6 +341,13 @@ def initialize_db(dbu):
 
 
 def open_db(dbu):
+    """
+    Open the specified database, returing a sessionmaker.
+
+    :param dbu: database URL
+    :type dbu: str
+    :return: sessionmaker
+    """
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
