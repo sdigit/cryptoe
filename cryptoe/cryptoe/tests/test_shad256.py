@@ -1,9 +1,9 @@
 __author__ = 'Sean Davis <dive@endersgame.net>'
 import unittest
 import struct
+
 from Crypto.Hash import SHA256
 from Crypto.Random import random
-import sys
 
 NISTV1 = [3, 0x616263]
 NISTV2 = [
@@ -70,7 +70,6 @@ class test_SHAd256(unittest.TestCase):
 
         rnd_buf_lens = sorted(list(set([random.randint(0, 4096) for _ in xrange(0, 64)])))
         for r in xrange(0, len(rnd_buf_lens)):
-            sys.stdout.flush()
             data = Random.new().read(rnd_buf_lens[r])
             ct_hash = ct_SHAd256.new(data).digest()
             py_hash = py_SHAd256(data)
