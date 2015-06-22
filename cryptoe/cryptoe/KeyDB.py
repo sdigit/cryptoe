@@ -110,26 +110,27 @@ def new_random_key(maker, kek, purpose, user, klen=32):
     return k_actual
 
 
-def new_salt(db_session, slen):
+def new_salt(maker, slen):
     """
     Generate a new random salt and store it in the database
 
-    :param db_session: sqlalchemy session
+    :param maker: sessionmaker
     :param slen: salt length (bytes)
     :type slen: int
     :return: salt record
     """
     from cryptoe import Random
-
+    session = maker()
     rbg = Random.new()
     s = Salt()
     s.salt = rbg.read(slen)
     salt = s.salt
-    db_session.add(s)
-    db_session.commit()
-    s = db_session.query(Salt).filter_by(salt=salt).first()
+    session.add(s)
+    session.commit()
+    s = session.query(Salt).filter_by(salt=salt).first()
     assert (s.salt == salt)
     del salt
+    s.close()
     return s
 
 
@@ -163,11 +164,16 @@ def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
     return k_actual
 
 
-def init_keys(maker):
+def init_keys(maker, use_yubikey=False):
     from getpass import getpass
     from cryptoe.exceptions import KeyLengthError
     from cryptoe.KeyMgmt import newkey_pbkdf
-    from cryptoe.utils import yubikey_passphrase_cr
+
+    password_transforms = {}
+    if use_yubikey is True:
+        from cryptoe.utils import yubikey_passphrase_cr
+
+        password_transforms['YK-HMAC-SHA1'] = yubikey_passphrase_cr
 
     passphrase_ready = 0
     session = maker()
@@ -175,7 +181,7 @@ def init_keys(maker):
     while not passphrase_ready:
         passphrase = getpass('passphrase: ').rstrip()
         if len(passphrase) < KEYDB_PASSPHRASE_LENGTH:
-            print('Passphrase is too short.')
+            print('passphrase is too short.')
             continue
         else:
             confirm = getpass('passphrase (confirm): ').rstrip()
@@ -183,19 +189,32 @@ def init_keys(maker):
                 passphrase_ready = 1
     del passphrase_ready
     roundcount = KEYDB_PBKDF2_ITERATIONS
-    passphrase = yubikey_passphrase_cr(passphrase)
+    print('[INIT->PASSPHRASE] applying passphrase transformations')
+    for tr in password_transforms:
+        trnam = tr.upper()
+        tr_func = password_transforms[tr]
+        print('[INIT->%s] running' % trnam)
+        opp = passphrase
+        passphrase = tr_func(passphrase)
+        if opp == passphrase:
+            print('[INIT->%s] no change' % trnam)
+        else:
+            print('[INIT->%s] old length: %d bytes, new length: %d bytes' % (trnam, len(opp), len(passphrase)))
     klen_bits = 256
     klen = klen_bits / 8
-
-    mk_salt = new_salt(session, klen)
+    slen = klen / 2
+    print('[INIT->SALT] creating new salt for PBKDF (salt len = %d)' % slen)
+    mk_salt = new_salt(maker, klen)
+    print('[INIT->SALT] salt created (id=%d)' % mk_salt.id)
     mk = MasterKey()
     mk.bits = klen_bits
     mk.prf_hash = DEFAULT_PRF_HASH.__name__.split('.')[-1]
     mk.rounds = roundcount
     mk.salt_id = mk_salt.id
 
+    print('[INIT->PBKDF] newkey_pbkdf(%d,<passphrase>,<salt>,%d)' % (klen, roundcount))
     mk_key = newkey_pbkdf(klen, passphrase, mk_salt.salt, roundcount)
-    print('[INIT->PBKDF] %d-bit master key derived from user input' % (len(mk_key) * 8))
+    print('[INIT->PBKDF] %d-bit master key derived' % (len(mk_key) * 8))
     if len(mk_key) != klen:
         raise KeyLengthError('PBKDF key is not of requested length (%d != %d)' % (len(mk_key), klen))
     mk_hash = SHAd256.new(mk_key).hexdigest()
