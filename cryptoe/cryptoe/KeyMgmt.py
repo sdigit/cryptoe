@@ -1,8 +1,10 @@
+__author__ = 'Sean Davis <dive@endersgame.net>'
 import os
 import struct
 import time
 
 from Crypto.Hash import HMAC, SHA512
+from cryptoe.Hash import SHAd256
 from Crypto.Protocol.KDF import PBKDF2
 import math
 
@@ -135,10 +137,10 @@ def pack_hkdf_info(label, context):
     label_struct.pack_into(lbuf, 0, str(label))
     context_struct.pack_into(cbuf, 0, str(context))
     struct.pack_into('>B', buf, 31, 0x00)
-    h = HMAC.new(label,digestmod=SHAd256)
+    h = HMAC.new(label, digestmod=SHAd256)
     h.update(bytes(lbuf))
     h.update('\x00')
-    h.update(bytes(cbuf)) 
+    h.update(bytes(cbuf))
     return h.digest[:30]
 
 

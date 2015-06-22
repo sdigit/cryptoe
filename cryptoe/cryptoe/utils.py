@@ -9,12 +9,11 @@ was written.
 For a complete list of which documents the cryptoe package implements in whole or in part, see the REFS file in the
 master cryptoe directory.
 """
-from cryptoe.Hash import SHAd256, whirlpool
 
 __author__ = 'Sean Davis <dive@endersgame.net>'
 
 import struct
-
+from cryptoe.Hash import SHAd256, whirlpool
 from cryptoe import YUBIKEY_HMAC_CR_SLOT
 
 

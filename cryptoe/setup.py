@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+__author__ = 'Sean Davis <dive@endersgame.net>'
 import os
 from distutils.core import setup, Extension
 
@@ -6,13 +7,15 @@ RDRAND = Extension('cryptoe.Hardware.RDRAND',
                    include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                    sources=['src/rng/rdrand.c',
                             'src/rng/pyrdrand.c'])
-KernelKeyUtil = Extension('cryptoe.OS.KernelKeyUtil',
-                          sources=['src/secrets/KernelKeyUtil.c'],
-                          libraries=['keyutils', 'bsd'],
-                          extra_compile_args=['-O0','-g'])
 shad256_ext = Extension('cryptoe.Hash.SHAd256',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                         sources=['src/hash/SHAd256.c'])
+
+KernelKeyUtil = Extension('cryptoe.OS.KernelKeyUtil',
+                          sources=['src/secrets/KernelKeyUtil.c'],
+                          libraries=['keyutils', 'bsd'],
+                          extra_compile_args=['-O0', '-g'])
+# Once KernelKeyUtil is feature-complete and stable, remove extra_compile_args.
 setup(
     name='cryptoe',
     author='Sean Davis',

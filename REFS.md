@@ -1,18 +1,36 @@
-**This file specifies which documents form the authoritative basis for the cryptographic primitives used and/or implemented within the Cryptoe project.**
+The following table lists sources used when designing and implementing various parts of cryptoe.
+This table is not complete.
 
-***No cryptography code shall be added without an appropriate reference document, and where uncertainty may exist functions MUST reference source documents in docstrings.***
-
-The goals of this approach:
-
-- Security and trustworthiness of implementation
-- Avoidance of hand-rolled crypto except where it actually simplifies or provably improves the implementation
-- Easy identification of the source document behind any given algorithm, in case that algorithm should at a later date be revised or become suspect
-- Easy avoidance of cryptographic primitives which the author does not wish to use, for whatever reason.
-
-
-| Author(s) or Organization | Publication |
-|:---:|:---:|
-| **NIST** | **SP 800-38A**: *Recommendation for Block Cipher Modes of Operation: Methods and Techniques* |
-| **NIST** | **SP 800-38F**: *Recommendation for Block Cipher Modes of Operation: Methods for Key Wrapping* |
-| **NIST** | **SP 800-132**: *Recommendation for Password-Based Key Derivation Part 1: Storage Applications* |
-| **Ferguson and Schneier** | *Practical Cryptography* |
+<table>
+ <tr>
+  <th>Author(s) or Organization</th>
+  <th>Publication</th>
+ </tr>
+ <tr>
+  <td>NIST</td>
+  <td>SP 800-38A: Recommendation for Block Cipher Modes of Operation: Methods and Techniques</td>
+ <tr>
+  <td>NIST</td>
+  <td>SP 800-38F: Recommendation for Block Cipher Modes of Operation: Methods for Key Wrapping</td>
+ </tr>
+ <tr>
+  <td>NIST</td>
+  <td>SP 800-56C: Recommendation for Key Derivation through Extraction-then-Expansion</td>
+ </tr>
+ <tr>
+  <td>IETF</td>
+  <td>RFC 5869: HMAC-based Extract-and-Expand Key Derivation Function (HKDF)</td>
+ </tr>
+ <tr>
+  <td>NIST</td>
+  <td>SP 800-132: Recommendation for Password-Based Key Derivation Part 1: Storage Applications</td>
+ </tr>
+ <tr>
+  <td>NIST</td>
+  <td>SP 800-133: Recommendation for Cryptographic Key Generation</td>
+ </tr>
+ <tr>
+  <td>Niels Ferguson, Bruce Schneier, Tadayoshi Kohno</td>
+  <td>Cryptography Engineering: Design Principles and Practical Applications</td>
+ </tr>
+</table>

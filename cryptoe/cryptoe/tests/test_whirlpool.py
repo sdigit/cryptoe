@@ -1,3 +1,4 @@
+__author__ = 'Sean Davis <dive@endersgame.net>'
 import unittest
 
 # Generated with:

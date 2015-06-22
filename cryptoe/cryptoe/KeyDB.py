@@ -1,3 +1,4 @@
+__author__ = 'Sean Davis <dive@endersgame.net>'
 import sys
 
 from sqlalchemy import Column, Integer, String, Binary, DateTime, ForeignKey, \

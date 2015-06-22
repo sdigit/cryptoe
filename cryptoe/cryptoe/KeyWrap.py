@@ -1,5 +1,6 @@
-from Crypto.Cipher import AES
+__author__ = 'Sean Davis <dive@endersgame.net>'
 from cryptoe import QUAD
+from Crypto.Cipher import AES
 
 
 class KeyWrapAlgorithm(object):

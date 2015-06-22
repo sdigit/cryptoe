@@ -19,29 +19,25 @@ Cryptoe requires the following additional python packages:
 3. sqlalchemy (key storage)
 
 ### TODO ###
-1. Testing
-1.1. unit tests
-1.1.1. Add KW and KWP test vectors
-1.2. Add assert checks in more places, where it makes sense to do so.
-2. Unwrapped secret key storage
-2.1. Linux: kernel per-user keyring seems ideal, with expiration
-2.2. BSD: TBD
-3. Add ciphers
-3.1. AES will use PyCrypto's implementation
-3.2. Serpent code needs CBC and CTR modes written for it, or another implementation used.
-3.3. Twofish code needs CBC and CTR modes written for it, or another implementation used.
+1. add unit tests for KeyDB and KeyMgmt
+2. add unit tests for KeyWrap (along with test vectors)
+3. Add assert checks in more places, where it makes sense to do so.
+4. Unwrapped secret key storage (for Linux, keyutils provides the necessary functions. A solution needs to be found for BSD and for Linux configurations that cannot use keyutils.
+5. Add ciphers
+ - AES (PyCrypto provides AES with AESNI support, so use that)
+ - Serpent (Cipher itself is already in-tree, however cipher modes are not.)
+ - Twofish (Cipher itself is already in-tree, however cipher modes are not.)
 
 ### Supported Platforms ###
-1. Linux
-1.1. Developed and tested on Linux/amd64
-2. BSD
-2.2. Tested on NetBSD 7/amd64
-2.2.1. Test system lacks RDRAND, however NetBSD uses CTR_DRBG as does RDRAND.
+1. Linux/amd64 (kernel 4.0.4 on Linux Mint)
+2. NetBSD/amd64 (7.0_BETA)
+
+### Testing needed ###
+1. Big-endian system(s): NetBSD/sparc64 most likely. Output will need to be compared to that from NetBSD/amd64 and Linux/amd64.
 
 ### RNG NOTES ###
 1. OS RNG is only used to feed the Fortuna CSPRNG, adapted from PyCrypto to take advantage of RDRAND.
-2. Fortuna implementation has been altered to pack clock and time information into a binary string which is then run through HMAC-SHAd256 before being fed back into the accumulator.
-2.1. Testing with dieharder shows this approach to provide good random numbers.
+2. Where RDRAND is not present, OS RNG is one of three entropy sources used for Fortuna
 
 ### SECRET KEY HANDLING ###
-(I will fill this in as more of the secret key storage is worked out)
+* On Linux, keyutil(2) provides the necessary functionality.

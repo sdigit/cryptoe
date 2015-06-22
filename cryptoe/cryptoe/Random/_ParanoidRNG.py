@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
-#
-#  Random/_ParanoidRNG.py : A user-friendly random number generator
-#
+__author__ = 'Sean Davis <dive@endersgame.net>'
 # Written in 2008 by Dwayne C. Litzenberger <dlitz@dlitz.net>
+# Adapted by Sean Davis <dive@endersgame.net> in 2015
 #
 # ===================================================================
 # The contents of this file are dedicated to the public domain.  To
