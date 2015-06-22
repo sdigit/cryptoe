@@ -127,8 +127,8 @@ def hkdf_expand(pseudo_random_key, info="", length=32, hash_obj=SHA512):
 # See http://eprint.iacr.org/2013/382.pdf for why.
 
 def pack_hkdf_info(label, context):
-    label_struct = struct.Struct('>B30s')
-    context_struct = struct.Struct('>B30s')
+    label_struct = struct.Struct('>30s')
+    context_struct = struct.Struct('>30s')
     buf = bytearray(61)
     LABEL_LEN = 30
     CONTEXT_LEN = 30
@@ -141,7 +141,7 @@ def pack_hkdf_info(label, context):
     h.update(bytes(lbuf))
     h.update('\x00')
     h.update(bytes(cbuf))
-    return h.digest[:30]
+    return h.digest()[:30]
 
 
 def gather_easy_entropy(size):
@@ -233,7 +233,7 @@ def newkey_hkdf(klen=32, k_in='', salt='', otherinfo=''):
     """
     assert (klen > 0)
     assert (klen % 8 == 0)
-    if len(otherinfo) != 64:
+    if len(otherinfo) != 30:
         raise DerivationError('otherinfo supplied is not of expected length')
     if salt == '':
         rbg = Random.new()
