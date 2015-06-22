@@ -11,11 +11,27 @@ shad256_ext = Extension('cryptoe.Hash.SHAd256',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                         sources=['src/hash/SHAd256.c'])
 
-KernelKeyUtil = Extension('cryptoe.OS.KernelKeyUtil',
-                          sources=['src/secrets/KernelKeyUtil.c'],
-                          libraries=['keyutils', 'bsd'],
-                          extra_compile_args=['-O0', '-g'])
 # Once KernelKeyUtil is feature-complete and stable, remove extra_compile_args.
+
+ext_modules_other = [
+    RDRAND,
+    shad256_ext,
+]
+
+ext_mods = ext_modules_other
+
+# KernelKeyUtil is only useful on Linux...
+if os.uname()[0] == 'Linux':
+    KernelKeyUtil = Extension('cryptoe.OS.KernelKeyUtil',
+                              sources=['src/secrets/KernelKeyUtil.c'],
+                              libraries=['keyutils', 'bsd'],
+                              extra_compile_args=['-O0', '-g'])
+    ext_mods = [
+        RDRAND,
+        shad256_ext,
+        KernelKeyUtil,
+    ]
+
 setup(
     name='cryptoe',
     author='Sean Davis',
@@ -37,11 +53,7 @@ setup(
         'cryptoe.KeyDB',
         'cryptoe.KeyWrap',
     ],
-    ext_modules=[
-        RDRAND,
-        shad256_ext,
-        KernelKeyUtil,
-    ],
+    ext_modules=ext_mods,
     requires=[
         'Crypto', 'hkdf', 'sqlalchemy', 'whirlpool',
     ],
