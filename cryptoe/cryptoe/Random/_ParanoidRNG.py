@@ -24,11 +24,9 @@ import os
 import threading
 import struct
 import time
-
 from math import floor, ceil
-from Crypto.Hash import HMAC, SHA512
+from Crypto.Hash import HMAC
 from Crypto.Random import OSRNG
-
 from Crypto.Random.Fortuna import FortunaAccumulator
 from cryptoe.Hash import SHAd256
 
@@ -45,8 +43,15 @@ class _EntropySource(object):
 
 
 class _EntropyCollector(object):
+    """
+    A modified version of Crypto.Random.Fortuna's EntropyCollector
+    + uses RDRAND if available
+    + processes time/clock input differently
+    """
+
     def __init__(self, accumulator):
         from cryptoe.Hardware import RDRAND
+
         self._rdrand = RDRAND
         self.fancy = 1
         self._osrng = OSRNG.new()
@@ -70,7 +75,11 @@ class _EntropyCollector(object):
         del es_num
 
     def reinit(self):
-
+        """
+        Reinitialize the collector.
+        :return:
+        :rtype:
+        """
         if self._use_rdrand is True:
             # force RDRAND to reseed
             self._rdrand.rdrand_64(1024)
@@ -97,8 +106,15 @@ class _EntropyCollector(object):
         self._osrng.flush()
 
     def collect(self):
+        """
+        Clock doesn't produce much entropy, and time is predictable; throw them through HMAC-SHAd256 to
+        mix things up a bit more before feeding them into Fortuna.
+        """
         # Collect 64 bits of entropy from the OS and feed it to Fortuna
         self._osrng_es.feed(self._osrng.read(8))  # + 64 bits
+        # If we have RDRAND, collect 256 bits from RDRAND and feed it to Fortuna
+        if self._use_rdrand is True:
+            self._rdrand_es.feed(self._rdrand.rdrand_bytes(32))
         # hash the fractional part of time.time()
         t = time.time()
         self._hmac.update(struct.pack("@L", int(2 ** 30 * (t - floor(t)))))
@@ -113,14 +129,6 @@ class _EntropyCollector(object):
         h = None
         del t
         del h
-        if self._use_rdrand is True:
-            # Feed Fortuna four 64bit RDRANDs, conditioned by SHA512
-            self._rdrand.rdrand_64(1024)
-            r = self._rdrand.rdrand_bytes(64)
-            r = SHA512.new(r).digest()[:32]
-            self._rdrand_es.feed(r)
-            r = None
-            del r
 
 
 class _ParanoidRNG(object):
