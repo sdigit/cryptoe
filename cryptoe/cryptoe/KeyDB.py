@@ -130,7 +130,7 @@ def new_salt(maker, slen):
     s = session.query(Salt).filter_by(salt=salt).first()
     assert (s.salt == salt)
     del salt
-    s.close()
+    session.close()
     return s
 
 
