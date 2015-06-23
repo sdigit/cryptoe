@@ -142,7 +142,7 @@ def new_derived_key(maker, kek, kdk, purpose, user, klen=32):
     k = Key()
     k.bits = klen * 8
     k.purpose = purpose
-    k_salt = new_salt(session, klen)
+    k_salt = new_salt(maker, klen)
     if len(k_salt.salt) != klen:
         raise SaltLengthError('HKDF salt must be the same length as the derivation key')
     k.salt_id = k_salt.id
