@@ -32,8 +32,8 @@ static PyObject *new_keyring(PyObject *,PyObject *);
 static PyObject *destroy_keyring(PyObject *,PyObject *);
 static PyObject *find_keyring(PyObject *,PyObject *);
 static PyObject *store_key(PyObject *,PyObject *);
-// static PyObject *read_key(PyObject *,PyObject *);
 static PyObject *list_keyring(PyObject *,PyObject *);
+static PyObject *read_key(PyObject *,PyObject *);
 
 /*
  * Helper functions not exposed to the Python API
@@ -370,13 +370,59 @@ list_keyring(self,args)
     return ret;
 }
 
+PyDoc_STRVAR(
+    read_key_doc,
+     "read_key(serial)\n"
+     "Read the specified key, returning its contents");
+
+static PyObject *
+read_key(self,args)
+    PyObject *self;
+    PyObject *args;
+{
+    key_serial_t k;
+    long ksz, copied;
+    char *buf;
+
+    ksz = copied = 0;
+    if (!PyArg_ParseTuple(args, "l", &k))
+        return NULL;
+
+    ksz = keyctl(KEYCTL_READ,k,NULL,0);
+    if (ksz == 0 || ksz == -1)
+    {
+        PyObject *ret;
+        ret = PyBuffer_FromMemory(NULL,0);
+        return ret;
+    }
+
+    buf = (char *)malloc(ksz);
+    if (buf == NULL)
+    {
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    copied = keyctl(KEYCTL_READ,k,buf,ksz);
+    if (copied != ksz)
+    {
+        free(buf);
+        PyErr_SetString(PyExc_MemoryError,"KEYCTL_READ returned an unexpected size");
+        return NULL;
+    }
+
+    PyObject *ret;
+    ret = PyString_FromStringAndSize(buf,(Py_ssize_t)ksz);
+    return ret;
+}
+
 static PyMethodDef KernelKeyUtil_methods[] = {
     {"new_keyring",new_keyring,METH_VARARGS,new_keyring_doc},
     {"destroy_keyring",destroy_keyring,METH_VARARGS,destroy_keyring_doc},
     {"find_keyring",find_keyring,METH_VARARGS,find_keyring_doc},
     {"store_key",store_key,METH_VARARGS,store_key_doc},
     {"list_keyring",list_keyring,METH_VARARGS,list_keyring_doc},
-    /* {"read_key",read_key,METH_VARARGS,read_key_doc}, */
+    {"read_key",read_key,METH_VARARGS,read_key_doc},
     {NULL,NULL,0,NULL}
 };
 
