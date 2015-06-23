@@ -22,7 +22,7 @@ Cryptoe requires the following additional python packages:
 1. add unit tests for KeyDB and KeyMgmt
 2. add unit tests for KeyWrap (along with test vectors)
 3. Add assert checks in more places, where it makes sense to do so.
-4. Unwrapped secret key storage (for Linux, keyutils provides the necessary functions. A solution needs to be found for BSD and for Linux configurations that cannot use keyutils.
+4. Decide how to deal with unwrapped secrets on FreeBSD and NetBSD as they do not have a kernel keyring API akin to Linux keyutils
 5. Add ciphers
  - AES (PyCrypto provides AES with AESNI support, so use that)
  - Serpent (Cipher itself is already in-tree, however cipher modes are not.)
