@@ -50,15 +50,14 @@ rdrand64(self,args)
         return NULL;
     }
 
-    PyObject *item;
-    uint64_t rdrand_arg;
+    unsigned int rdrand_arg;
     int rdrand_ret;
     uint64_t *data;
 
     if (!PyArg_ParseTuple(args, "I", &rdrand_arg))
         return NULL;
 
-    data = (uint64_t *)malloc(sizeof(uint64_t) * rdrand_arg);
+    data = malloc(sizeof(uint64_t) * rdrand_arg);
     if (data == NULL)
     {
         PyErr_NoMemory();
@@ -79,6 +78,7 @@ rdrand64(self,args)
         retval = PyTuple_New(rdrand_arg);
         for (i=0;i<rdrand_arg;i++)
         {
+            PyObject *item;
             item = PyInt_FromLong(data[i]);
             PyTuple_SetItem(retval,i,item);
         }
@@ -101,8 +101,7 @@ rdrand_bytes(self,args)
         PyErr_SetString(PyExc_NotImplementedError, "RDRAND is not supported on this platform");
         return NULL;
     }
-
-    uint64_t rdrand_arg;
+    unsigned int rdrand_arg;
     int rdrand_ret;
     unsigned char *buf;
 
