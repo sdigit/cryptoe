@@ -36,7 +36,7 @@ setup(
     name='cryptoe',
     author='Sean Davis',
     author_email='cryptoe@endersgame.net',
-    version='1.13.1-TEST',  # see also cryptoe/__init__.py
+    version='1.14.0',  # see also cryptoe/__init__.py
     url='https://github.com/sdigit/cryptoe/',
     description='Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
     packages=[
