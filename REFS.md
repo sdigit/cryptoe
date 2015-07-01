@@ -5,32 +5,45 @@ This table is not complete.
  <tr>
   <th>Author(s) or Organization</th>
   <th>Publication</th>
+  <th>Abbreviation</th>
  </tr>
  <tr>
   <td>NIST</td>
   <td>SP 800-38A: Recommendation for Block Cipher Modes of Operation: Methods and Techniques</td>
+  <td>SP800-38A</td>
  <tr>
   <td>NIST</td>
   <td>SP 800-38F: Recommendation for Block Cipher Modes of Operation: Methods for Key Wrapping</td>
+  <td>SP800-38F</td>
  </tr>
  <tr>
   <td>NIST</td>
   <td>SP 800-56C: Recommendation for Key Derivation through Extraction-then-Expansion</td>
- </tr>
- <tr>
-  <td>IETF</td>
-  <td>RFC 5869: HMAC-based Extract-and-Expand Key Derivation Function (HKDF)</td>
+  <td>SP800-56C</td>
  </tr>
  <tr>
   <td>NIST</td>
   <td>SP 800-132: Recommendation for Password-Based Key Derivation Part 1: Storage Applications</td>
+  <td>SP800-132</td>
  </tr>
  <tr>
   <td>NIST</td>
   <td>SP 800-133: Recommendation for Cryptographic Key Generation</td>
+  <td>SP800-133</td>
+ </tr>
+ <tr>
+  <td>IETF</td>
+  <td>RFC 5869: HMAC-based Extract-and-Expand Key Derivation Function (HKDF)</td>
+  <td>RFC5869</td>
+ </tr>
+ <tr>
+  <td>IETF</td>
+  <td>RFC 5297: Synthetic Initialization Vector (SIV) Authenticated Encryption Using the Advanced Encryption Standard (AES)</td>
+  <td>RFC5297</td>
  </tr>
  <tr>
   <td>Niels Ferguson, Bruce Schneier, Tadayoshi Kohno</td>
   <td>Cryptography Engineering: Design Principles and Practical Applications</td>
+  <td>FS&K</td>
  </tr>
 </table>
