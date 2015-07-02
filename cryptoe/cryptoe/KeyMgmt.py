@@ -2,11 +2,11 @@ __author__ = 'Sean Davis <dive@endersgame.net>'
 import os
 import struct
 import time
-
-from Crypto.Hash import HMAC, SHA512
-from cryptoe.Hash import SHAd256
-from Crypto.Protocol.KDF import PBKDF2
 import math
+
+from Crypto.Hash import HMAC, SHA512, SHA384
+
+from Crypto.Protocol.KDF import PBKDF2
 
 from cryptoe import Random
 from cryptoe.exceptions import DerivationError, LowIterationCount, KeyLengthError
@@ -107,42 +107,37 @@ def hkdf_expand(pseudo_random_key, info="", length=32, hash_obj=SHA512):
 #
 #
 # With both RFC5869 and SP800-56C in mind, we construct our info field as follows:
-# label (31 bytes) + 0x00 + context (32 bytes)
+# 1) if label or context > 30 bytes, replace with the first 30 bytes of the SHAd256
+#    digest of label (or context)
+# 2) otherinfo = HMAC-SHAd256(label | label | context)[0..30]
 #
 # The final info bit string is packed in big-endian byte order.
 #
-# [  size  ]    name    description
-# ---------------------------------
-# [240 bits]    LABEL
-# ---------------------------------
-# [  8 bits]    len     length of the following string in bytes
-# [232 bits]    txt     string identifying the purpose of the derived keying material
-# ---------------------------------
-# [  8 bits] zero byte (to separate label and context per SP800-56C)
-# ---------------------------------
-# [240 bits] CONTEXT
-# ---------------------------------
-# [  8 bits]    len     length of the final binary string CONTEXT in bytes
-# [232 bits]    txt     string describing what/who will use the derived keying material
+# This was originally written to produce a much longer otherinfo value (512 bits),
+# however as Dodis, Ristenpart, Steinberger & Tessaro reported in 2013, keying HMAC
+# (or, by extension, HKDF) could in fact weaken the overall construction.
+#
+# Hence, label and context are:
+# 1) used as-is if less than 30 bytes
+# 2) replaced with SHA-384 output truncated to 30 bytes if more than 30 bytes
+# 3) used as input to HMAC-SHA512 keyed with label itself
+#
+# The intended result is that regardless of the size of label and context, the
+# potential weakness on the second iterate of HMAC is avoided, as are weaknesses
+# due to length extension (by virtue of using truncated hash output in all three
+# steps)
 
-# This has been modified to produce a 30-byte salt rather than a 64-byte salt.
-# See http://eprint.iacr.org/2013/382.pdf for why.
+# Further reading: http://eprint.iacr.org/2013/382.pdf
 
 def pack_hkdf_info(label, context):
-    label_struct = struct.Struct('>30s')
-    context_struct = struct.Struct('>30s')
-    buf = bytearray(61)
-    LABEL_LEN = 30
-    CONTEXT_LEN = 30
-    lbuf = bytearray(LABEL_LEN)
-    cbuf = bytearray(CONTEXT_LEN)
-    label_struct.pack_into(lbuf, 0, str(label))
-    context_struct.pack_into(cbuf, 0, str(context))
-    struct.pack_into('>B', buf, 31, 0x00)
-    h = HMAC.new(label, digestmod=SHAd256)
-    h.update(bytes(lbuf))
+    if len(label) > 30:
+        label = SHA384.new(label).digest()[:30]
+    if len(context) > 30:
+        context = SHA384.new(context).digest()[:30]
+    h = HMAC.new(label, digestmod=SHA512)
+    h.update(bytes(struct.pack('>30s', label)))
     h.update('\x00')
-    h.update(bytes(cbuf))
+    h.update(bytes(struct.pack('>30s', context)))
     return h.digest()[:30]
 
 
