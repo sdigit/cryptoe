@@ -9,25 +9,32 @@
 #include <keyutils.h>
 #include <errno.h>
 
+
 #define KDB_TYPE_KEYRING    "keyring"
 #define KDB_TYPE_USER       "user"
+#define KDB_DESC_PREFIX     "cryptoe|"
+
 #define KDB_MAX_DESC        64
 #define KDB_MAX_KEY         512
-#define KDB_DESC_PREFIX     "cryptoe|"
 #define KDB_PREFIX_LEN      9
-#define KDB_DESC_BUFSIZE     1024
+#define KDB_DESC_BUFSIZE    1024
 
+/* simple structure for a count and an array of key serial numbers */
 typedef struct {
     size_t k_cnt;
     key_serial_t *k_keys;
 } keyring_t;
 
 static char desc_buffer[KDB_DESC_BUFSIZE];
+
+
+/* prototypes for pure C functions */
 static keyring_t *alloc_keyring(size_t);
 static void free_keyring(keyring_t *);
 static int prefix_desc(ssize_t,const char *);
 static keyring_t *read_keyring(key_serial_t);
 
+/* prototypes for functions that'll be called from Python */
 static PyObject *new_keyring(PyObject *,PyObject *);
 static PyObject *destroy_keyring(PyObject *,PyObject *);
 static PyObject *find_keyring(PyObject *,PyObject *);
@@ -35,8 +42,9 @@ static PyObject *store_key(PyObject *,PyObject *);
 static PyObject *list_keyring(PyObject *,PyObject *);
 static PyObject *read_key(PyObject *,PyObject *);
 
+
 /*
- * Helper functions not exposed to the Python API
+ * Stick our predefined description before a string.
  */
 int
 prefix_desc(len,str)
@@ -91,7 +99,6 @@ free_keyring(kr)
     free(kr);
 }
 
-
 static keyring_t *
 read_keyring(kr)
     key_serial_t kr;
@@ -121,6 +128,7 @@ read_keyring(kr)
         return krs;
     }
 }
+
 /*
  * Create a keyring
  */
@@ -128,7 +136,6 @@ PyDoc_STRVAR(
     new_keyring_doc,
     "new_keyring(name)\n"
     "Create a keyring, returning the serial number");
-
 static PyObject *
 new_keyring(self,args)
     PyObject *self;
@@ -194,7 +201,6 @@ PyDoc_STRVAR(
     destroy_keyring_doc,
      "destroy_keyring(keyring_serial)\n"
      "Destroy the specified keyring (first clear and then invalidate it)\n");
-
 static PyObject *
 destroy_keyring(self,args)
     PyObject *self;
@@ -218,13 +224,12 @@ destroy_keyring(self,args)
 }
 
 /*
- * Find a keyring, returning the serial
+ * Check the kernel couch
  */
 PyDoc_STRVAR(
     find_keyring_doc,
      "find_keyring(name)\n"
      "Find the named keyring, returning its serial number");
-
 static PyObject *
 find_keyring(self,args)
     PyObject *self;
@@ -259,7 +264,6 @@ PyDoc_STRVAR(
     store_key_doc,
     "store_key(keyring serial,description,key)\n"
     "Store a key in the specified keyring\n");
-
 static PyObject *
 store_key(self,args)
     PyObject *self;
@@ -339,7 +343,6 @@ PyDoc_STRVAR(
     "list_keyring(keyring serial)"
     "\n"
     "Returns a tuple of key serials found in the specified keyring\n");
-
 static PyObject *
 list_keyring(self,args)
     PyObject *self;
@@ -374,7 +377,6 @@ PyDoc_STRVAR(
     read_key_doc,
      "read_key(serial)\n"
      "Read the specified key, returning its contents");
-
 static PyObject *
 read_key(self,args)
     PyObject *self;

@@ -15,8 +15,8 @@ ext_mods = [RDRAND, shad256_ext]
 
 # LNXKeyring_ext is only useful on Linux...
 if os.uname()[0] == 'Linux':
-    LNXKeyring_ext = Extension('cryptoe.OS._LNXKeyring',
-                               sources=['src/secrets/LNXKeyring_ext.c'],
+    LNXKeyring_ext = Extension('cryptoe.OS.LNXKeyring',
+                               sources=['src/secrets/LNXKeyring.c'],
                                libraries=['keyutils', 'bsd'])
     ext_mods.append(LNXKeyring_ext)
 
