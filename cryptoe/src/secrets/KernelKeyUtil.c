@@ -109,7 +109,7 @@ read_keyring(kr)
     nkey = sz / sizeof(key_serial_t);
     krs = alloc_keyring(sz / sizeof(key_serial_t));
     krs->k_cnt = nkey;
-    
+
     ret = keyctl(KEYCTL_READ,kr,krs->k_keys,sz);
     if (ret != sz)
     {
@@ -416,7 +416,7 @@ read_key(self,args)
     return ret;
 }
 
-static PyMethodDef KernelKeyUtil_methods[] = {
+static PyMethodDef LNXKeyring_methods[] = {
     {"new_keyring",new_keyring,METH_VARARGS,new_keyring_doc},
     {"destroy_keyring",destroy_keyring,METH_VARARGS,destroy_keyring_doc},
     {"find_keyring",find_keyring,METH_VARARGS,find_keyring_doc},
@@ -427,7 +427,7 @@ static PyMethodDef KernelKeyUtil_methods[] = {
 };
 
 PyMODINIT_FUNC
-initKernelKeyUtil(void)
+initLNXKeyring(void)
 {
-    Py_InitModule("KernelKeyUtil", KernelKeyUtil_methods);
+    Py_InitModule("LNXKeyring", LNXKeyring_methods);
 }

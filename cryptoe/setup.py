@@ -11,32 +11,20 @@ shad256_ext = Extension('cryptoe.Hash.SHAd256',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                         sources=['src/hash/SHAd256.c'])
 
-# Once KernelKeyUtil is feature-complete and stable, remove extra_compile_args.
+ext_mods = [RDRAND, shad256_ext]
 
-ext_modules_other = [
-    RDRAND,
-    shad256_ext,
-]
-
-ext_mods = ext_modules_other
-
-# KernelKeyUtil is only useful on Linux...
+# LNXKeyring_ext is only useful on Linux...
 if os.uname()[0] == 'Linux':
-    KernelKeyUtil = Extension('cryptoe.OS.KernelKeyUtil',
-                              sources=['src/secrets/KernelKeyUtil.c'],
-                              libraries=['keyutils', 'bsd'],
-                              extra_compile_args=['-O0', '-g'])
-    ext_mods = [
-        RDRAND,
-        shad256_ext,
-        KernelKeyUtil,
-    ]
+    LNXKeyring_ext = Extension('cryptoe.OS._LNXKeyring',
+                               sources=['src/secrets/LNXKeyring_ext.c'],
+                               libraries=['keyutils', 'bsd'])
+    ext_mods.append(LNXKeyring_ext)
 
 setup(
     name='cryptoe',
     author='Sean Davis',
     author_email='cryptoe@endersgame.net',
-    version='1.14.0',  # see also cryptoe/__init__.py
+    version='1.15.0dev',  # see also cryptoe/__init__.py
     url='https://github.com/sdigit/cryptoe/',
     description='Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
     packages=[
@@ -55,7 +43,7 @@ setup(
     ],
     ext_modules=ext_mods,
     requires=[
-        'Crypto', 'hkdf', 'sqlalchemy', 'whirlpool',
+        'Crypto', 'sqlalchemy', 'whirlpool',
     ],
     scripts=['kdb'],
 )

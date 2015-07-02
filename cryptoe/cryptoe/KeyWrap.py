@@ -1,5 +1,7 @@
+import struct
+
 __author__ = 'Sean Davis <dive@endersgame.net>'
-from cryptoe import QUAD
+
 from Crypto.Cipher import AES
 
 
@@ -35,6 +37,7 @@ class KWP(KeyWrapAlgorithm):
 def unwrap_key_and_iv(kek, wrapped):
     n = len(wrapped) / 8 - 1
     r = [None] + [wrapped[i * 8:i * 8 + 8] for i in range(1, n + 1)]
+    QUAD = struct.Struct('>Q')
     a = QUAD.unpack(wrapped[:8])[0]
     decrypt = AES.new(kek).decrypt
     for j in range(5, -1, -1):
@@ -69,6 +72,7 @@ def wrap_key(kek, plaintext, iv=0xa6a6a6a6a6a6a6a6):
     r = [None] + [plaintext[i * 8:i * 8 + 8] for i in range(0, n)]
     a = iv
     encrypt = AES.new(kek).encrypt
+    QUAD = struct.Struct('>Q')
     for j in range(6):
         for i in range(1, n + 1):
             # noinspection PyTypeChecker

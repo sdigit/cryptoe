@@ -14,7 +14,8 @@ __author__ = 'Sean Davis <dive@endersgame.net>'
 
 import struct
 from cryptoe.Hash import SHAd256, whirlpool
-from cryptoe import YUBIKEY_HMAC_CR_SLOT
+
+YUBIKEY_HMAC_CR_SLOT = 2
 
 
 def long2ba(val):

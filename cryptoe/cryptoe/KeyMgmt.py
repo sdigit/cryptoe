@@ -8,10 +8,12 @@ from cryptoe.Hash import SHAd256
 from Crypto.Protocol.KDF import PBKDF2
 import math
 
-from cryptoe import Random, DEFAULT_PBKDF2_ITERATIONS, MINIMUM_PBKDF2_ITERATIONS
+from cryptoe import Random
 from cryptoe.exceptions import DerivationError, LowIterationCount, KeyLengthError
 
 DEFAULT_PRF_HASH = SHA512
+DEFAULT_PBKDF2_ITERATIONS = 2 ** 16
+MINIMUM_PBKDF2_ITERATIONS = 2 ** 15
 
 
 def hkdf_extract(salt, input_key_material, hash_obj=SHA512):
