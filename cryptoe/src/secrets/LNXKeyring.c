@@ -91,6 +91,7 @@ alloc_keyring(nkeys)
     return r;
 }
 
+/* Because if Linux has bothered to have a good API for this, I wou */
 static void
 free_keyring(kr)
     keyring_t *kr;
