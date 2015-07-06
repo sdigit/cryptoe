@@ -1,8 +1,8 @@
 __author__ = 'Sean Davis <dive@endersgame.net>'
 import os
-import struct
 import time
 import math
+import struct
 
 from Crypto.Hash import HMAC, SHA512, SHA384
 
@@ -115,7 +115,8 @@ def hkdf_expand(pseudo_random_key, info="", length=32, hash_obj=SHA512):
 #
 # This was originally written to produce a much longer otherinfo value (512 bits),
 # however as Dodis, Ristenpart, Steinberger & Tessaro reported in 2013, keying HMAC
-# (or, by extension, HKDF) could in fact weaken the overall construction.
+# (or, by extension, HKDF) with a value equal to or larger than the output digest
+# size could in fact weaken the overall construction.
 #
 # Hence, label and context are:
 # 1) used as-is if less than 30 bytes
