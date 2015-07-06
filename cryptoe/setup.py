@@ -43,7 +43,7 @@ setup(
     ],
     ext_modules=ext_mods,
     requires=[
-        'Crypto', 'sqlalchemy', 'whirlpool',
+        'pycrypto', 'sqlalchemy', 'whirlpool',
     ],
     scripts=['kdb'],
 )
