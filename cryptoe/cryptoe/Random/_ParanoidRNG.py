@@ -1,34 +1,13 @@
-__author__ = 'Sean Davis <dive@endersgame.net>'
-# Written in 2008 by Dwayne C. Litzenberger <dlitz@dlitz.net>
-# Adapted by Sean Davis <dive@endersgame.net> in 2015
-#
-# ===================================================================
-# The contents of this file are dedicated to the public domain.  To
-# the extent that dedication to the public domain is not available,
-# everyone is granted a worldwide, perpetual, royalty-free,
-# non-exclusive license to exercise all rights associated with the
-# contents of this file for any purpose whatsoever.
-# No rights are reserved.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-# BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-# ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-# ===================================================================
-
+# PUBLIC DOMAIN
 import os
 import threading
-import struct
-import time
-from math import floor, ceil
-from Crypto.Hash import HMAC
 from Crypto.Random import OSRNG
 from Crypto.Random.Fortuna import FortunaAccumulator
-from cryptoe.Hash import SHAd256
+from cryptoe.OS import get_sys_uptime
+from cryptoe.utils import pack_integer_le
+from collections import OrderedDict
+from time import clock, time
+from math import floor, ceil
 
 
 class _EntropySource(object):
@@ -43,92 +22,91 @@ class _EntropySource(object):
 
 
 class _EntropyCollector(object):
-    """
-    A modified version of Crypto.Random.Fortuna's EntropyCollector
-    + uses RDRAND if available
-    + processes time/clock input differently
-    """
-
     def __init__(self, accumulator):
         from cryptoe.Hardware import RDRAND
 
+        self._nsrc = 255
+        self._srcs = OrderedDict()
         self._rdrand = RDRAND
-        self.fancy = 1
         self._osrng = OSRNG.new()
-        if check_for_rdrand():
-            self._use_rdrand = True
-            self._hmac = HMAC.new(key=self._rdrand.rdrand_bytes(32), digestmod=SHAd256)
-        else:
-            self._use_rdrand = False
-            self._hmac = HMAC.new(key=self._osrng.read(32), digestmod=SHAd256)
-        es_num = 255
-        self._osrng_es = _EntropySource(accumulator, es_num)
-        es_num -= 1
-        if self._use_rdrand is True:
-            self._rdrand.rdrand_64(1024)
-            self._rdrand_es = _EntropySource(accumulator, es_num)
-            es_num -= 1
+        self._rng_lock = threading.Lock()
+        self._src_lock = threading.Lock()
 
-        self._time_es = _EntropySource(accumulator, es_num)
-        es_num -= 1
-        self._clock_es = _EntropySource(accumulator, es_num)
-        del es_num
+        self.add_source('osrng', accumulator)
+        self.add_source('time', accumulator)
+        self.add_source('clock', accumulator)
+        self.add_source('uptime', accumulator)
+
+        if check_for_rdrand():
+            self.add_source('rdrand', accumulator)
+
+    @property
+    def using_rdrand(self):
+        with self._src_lock:
+            ret = 'rdrand' in self._srcs
+        return ret
+
+    def add_source(self, name, accumulator):
+        """
+        Adds a new entropy collector to this object.
+
+        :param name: Name of the new entropy source
+        :param accumulator: FortunaAccumulator which should use this source
+        :raise OverflowError: source is already in use
+        """
+        if self._nsrc == 0:
+            raise RuntimeError('Cannot add another entropy source')
+        if name in self._srcs:
+            raise NameError('entropy source "%s" already exists!' % str(name))
+        with self._src_lock:
+            self._srcs[name] = _EntropySource(accumulator, self._nsrc)
+            self._nsrc -= 1
+
+    def collect(self):
+        """
+        Collect entropy from available sources
+        """
+        self._srcs['osrng'].feed(self._osrng.read(8))
+        self._osrng.flush()
+        self._srcs['rdrand'].feed(self._rdrand.rdrand_bytes(32))
+        self._rdrand.rdrand_64(1024)
+        ut_data = get_sys_uptime()
+        for val in ut_data:
+            assert (type(val) == list)
+            assert (len(val) == 2)
+            self._srcs['uptime'].feed(pack_integer_le(val[0], val[1]))
+        tm = time()
+        self._srcs['time'].feed(pack_integer_le(4, int(2 ** 30 * (tm - floor(tm)))))
+        self._srcs['time'].feed(pack_integer_le(4, int(ceil(tm))))
+        ck = clock()
+        self._srcs['clock'].feed(pack_integer_le(4, int(2 ** 30 * (ck - floor(ck)))))
 
     def reinit(self):
         """
         Reinitialize the collector.
-        :return:
-        :rtype:
         """
-        if self._use_rdrand is True:
-            # force RDRAND to reseed
-            self._rdrand.rdrand_64(1024)
-            self._hmac = HMAC.new(key=self._rdrand.rdrand_bytes(32), digestmod=SHAd256)
-            for i in range(2):
-                # force RDRAND to reseed
-                block = self._rdrand.rdrand_bytes(32 * 32)
-                # force RDRAND to reseed
-                for p in range(32):
-                    self._rdrand_es.feed(block[p * 32:(p + 1) * 32])
-                block = None
-                del block
-            # Add 256 bits to each of the 32 pools, twice, from OSRNG. Force RDRAND reseed as it is used
-            # by the linux kernel PRNG.
-            self._rdrand.rdrand_64(1024)
-        else:
-            self._hmac = HMAC.new(key=self._osrng.read(32), digestmod=SHAd256)
+        # Add 256 bits to each of the 32 pools, twice, from OSRNG
+        seed_len = 32 * 32
         for i in range(2):
-            block = self._osrng.read(32 * 32)
+            block = self._osrng.read(1024)
             for p in range(32):
-                self._osrng_es.feed(block[p * 32:(p + 1) * 32])
+                with self._src_lock:
+                    self._srcs['osrng'].feed(block[p * 32:(p + 1) * 32])
             block = None
             del block
         self._osrng.flush()
 
-    def collect(self):
-        """
-        Clock doesn't produce much entropy, and time is predictable; throw them through HMAC-SHAd256 to
-        mix things up a bit more before feeding them into Fortuna.
-        """
-        # Collect 64 bits of entropy from the OS and feed it to Fortuna
-        self._osrng_es.feed(self._osrng.read(8))  # + 64 bits
-        # If we have RDRAND, collect 256 bits from RDRAND and feed it to Fortuna
-        if self._use_rdrand is True:
-            self._rdrand_es.feed(self._rdrand.rdrand_bytes(32))
-        # hash the fractional part of time.time()
-        t = time.time()
-        self._hmac.update(struct.pack("@L", int(2 ** 30 * (t - floor(t)))))
-        self._hmac.update(struct.pack("@L", int(ceil(t))))
-        self._time_es.feed(self._hmac.digest()[:32])  # + 256 bits
-        #  and the fractional part of time.clock()
-        t = time.clock()
-        self._hmac.update(struct.pack("@L", int(2 ** 30 * (t - floor(t)))))
-        self._hmac.update(struct.pack("@L", int(ceil(t))))
-        self._clock_es.feed(self._hmac.digest()[:32])  # + 256 bits
-        t = None
-        h = None
-        del t
-        del h
+        if self.using_rdrand:
+            # Add 256 bits to each of the 32 pools, twice, from RDRAND
+            for i in range(2):
+                self._rdrand.rdrand_64(1024)
+                block = self._rdrand.rdrand_bytes(seed_len)
+                for p in range(32):
+                    self._srcs['rdrand'].feed(block[p * 32:(p + 1) * 32])
+                block = None
+                del block
+            self._rdrand.rdrand_64(1024)
+        self.collect()
 
 
 class _ParanoidRNG(object):
@@ -145,7 +123,6 @@ class _ParanoidRNG(object):
         the operating system.
         :type self: _ParanoidRNG
         """
-
         # Save the pid (helps ensure that Crypto.Random.atfork() gets called)
         self._pid = os.getpid()
 
@@ -166,12 +143,12 @@ class _ParanoidRNG(object):
         self._fa._forget_last_reseed()
 
     def close(self):
+        self.closed = True
         """
         Close the OS RNG and lose the reference to the Fortuna accumulator
 
         :type self: _ParanoidRNG
         """
-        self.closed = True
         self._osrng = None
         self._fa = None
 
