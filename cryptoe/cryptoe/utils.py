@@ -1,16 +1,6 @@
 """
-Centralize all cryptography primitives (as well as data conversion routines) that are commonly needed, in order to
-ensure that implementations differ as little as possible.
-
-Where non-cryptoe code is used (eg. pycrypto), I have endeavored to verify that the implementation being referenced is
-compliant with the relevant standards (NIST or RFC), however can only vouch for the versions audited at the time this
-was written.
-
-For a complete list of which documents the cryptoe package implements in whole or in part, see the REFS file in the
-master cryptoe directory.
+Functions which don't fit better in another module (or are used by several)
 """
-
-__author__ = 'Sean Davis <dive@endersgame.net>'
 
 import struct
 from cryptoe.Hash import SHAd256, whirlpool
@@ -31,6 +21,32 @@ def long2ba(val):
         b += struct.pack('<B', n % 256)
         n >>= 8
     return bytearray(reversed(b))
+
+
+def pack_integer_le(size, num, signed=False):
+    """
+    Return the proper struct character for an integer of given size and signedness
+    Raises ValueError if an unexpected size is encountered.
+
+    :param size: Size (in bytes)
+    :type size: int
+    :return: format character for struct.(pack|unpack)
+    :rtype: str
+    """
+    if size not in [1, 2, 4, 8]:
+        raise ValueError('size must be 1, 2, 4, or 8')
+
+    types = {
+        'S1': 'b', 'U1': 'B',
+        'S2': 'h', 'U2': 'H',
+        'S4': 'I', 'U4': 'L',
+        'S8': 'q', 'U8': 'Q',
+    }
+    if signed:
+        name = 'S' + str(size)
+    else:
+        name = 'U' + str(size)
+    return struct.pack('>' + types[name], num)
 
 
 def pad(what, size):
