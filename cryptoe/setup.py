@@ -40,6 +40,7 @@ setup(
         'cryptoe.KeyMgmt',
         'cryptoe.KeyDB',
         'cryptoe.KeyWrap',
+        'cryptoe.OS.Specific',
     ],
     ext_modules=ext_mods,
     requires=[
