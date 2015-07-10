@@ -512,7 +512,7 @@ static PyTypeObject ALGtype = {
 static PyObject *
 ALG_new(PyObject *self, PyObject *args)
 {
-        ALGobject *new;
+    ALGobject *new;
 	unsigned char *cp = NULL;
 	int len;
 
