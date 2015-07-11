@@ -1,0 +1,51 @@
+* Sean Davis @ 2015/07/10
+Copied rijndael from NetBSD kernel sources:
+     $NetBSD: rijndael-alg-fst.c,v 1.7 2005/12/11 12:20:52 christos Exp $
+     $NetBSD: rijndael-alg-fst.h,v 1.4 2005/12/11 12:20:52 christos Exp $
+     $NetBSD: rijndael-api-fst.c,v 1.24 2011/05/14 16:46:55 jmmv Exp $
+     $NetBSD: rijndael-api-fst.h,v 1.8 2007/01/21 23:00:08 cbiere Exp $
+     $NetBSD: rijndael.c,v 1.8 2005/12/11 12:20:52 christos Exp $
+     $NetBSD: rijndael.h,v 1.10 2005/12/11 12:20:52 christos Exp $
+     $NetBSD: rijndael_local.h,v 1.6 2005/12/11 12:20:52 christos Exp $
+
+Copied nist_ctr_drbg from NetBSD kernel sources:
+     $NetBSD: nist_ctr_aes_rijndael.h,v 1.1 2011/11/19 22:51:22 tls Exp $
+     $NetBSD: nist_ctr_drbg.c,v 1.1 2011/11/19 22:51:22 tls Exp $
+     $NetBSD: nist_ctr_drbg.h,v 1.2 2011/11/21 23:48:52 macallan Exp $
+     $NetBSD: nist_ctr_drbg_aes128.h,v 1.2 2011/12/17 20:05:38 tls Exp $
+     $NetBSD: nist_ctr_drbg_aes256.h,v 1.2 2011/12/17 20:05:38 tls Exp $
+     $NetBSD: nist_ctr_drbg_config.h,v 1.1 2011/11/19 22:51:22 tls Exp $
+
+changed the includes referencing rijndael & nist_ctr_drbg to be relative pathsfixed minor whitespace nits (tabstops in macros)
+
+removed __KERNEL_RCSID's (Linux won't understand those)
+
+following the example in the source, removed #include <sys/systm.h> in favor of
+stdlib.h and string.h (in all files that had an #ifdef for that; in rijndael.c I removed systm.h in favor of inttypes.h)
+
+(bikeshed) made each file end with a blank line
+
+moved size_t declaration up above the for loop in xor16 in rijndael-api-fst.c to silence gcc:
+rijndael-api-fst.c: In function ‘xor16’:
+rijndael-api-fst.c:52:2: error: ‘for’ loop initial declarations are only allowed in C99 mode
+  for (size_t i = 0; i < 4; i++) {
+  ^
+rijndael-api-fst.c:52:2: note: use option -std=c99 or -std=gnu99 to compile your code
+
+added inttypes.h to nist_ctr_drbg.c and moved #include "rijndael.h" below it
+
+With the above changes, cc -c succeeds.
+
+-Wall found two implicit declarations of KASSERT in nist_ctr_drbg.c; changed to asserts and added assert.h to includes in that file.
+
+With that, compilation succeeds:
+
+$ cc -c -Wall -Wunused-result -Wstrict-prototypes -Werror nist_ctr_drbg.c
+$ cc -c -Wall -Wunused-result -Wstrict-prototypes -Werror rijndael-alg-fst.c
+$ cc -c -Wall -Wunused-result -Wstrict-prototypes -Werror rijndael-api-fst.c
+$ cc -c -Wall -Wunused-result -Wstrict-prototypes -Werror rijndael.c
+$ ar rcs nist_ctr_drbg.a nist_ctr_drbg.o rijndael-alg-fst.o rijndael-api-fst.o rijndael.o
+
+## Committing these changes before proceeding with integration ##
+
+
