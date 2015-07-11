@@ -24,13 +24,21 @@
  * SUCH DAMAGE.
  */
 
-#include <inttypes.h>
 #include <time.h>
+#include <string.h>
+#include <stdio.h>
+#include "ctapi.h"
 
-struct clocks {
-    struct timespec ts_mono;
-    struct timespec ts_real;
-};
+int
+get_clocks(ptr)
+    struct clocks *ptr;
+{
+    if (clock_gettime(CLOCK_MONOTONIC, &ptr->ts_mono) != 0)
+        return -1;
 
-int get_clocks(struct clocks *);
+    if (clock_gettime(CLOCK_REALTIME, &ptr->ts_real) != 0)
+        return -1;
+
+    return 0;
+}
 

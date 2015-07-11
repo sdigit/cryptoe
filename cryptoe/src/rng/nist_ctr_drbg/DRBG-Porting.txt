@@ -32,7 +32,7 @@ rijndael-api-fst.c:52:2: error: ‘for’ loop initial declarations are only all
   ^
 rijndael-api-fst.c:52:2: note: use option -std=c99 or -std=gnu99 to compile your code
 
-added inttypes.h to nist_ctr_drbg.c and moved #include "rijndael.h" below it
+added inttypes.h to nist_ctr_drbg.c and moved #include "rijndael.h" below it. Added string.h for memset/memcpy as well.
 
 With the above changes, cc -c succeeds.
 

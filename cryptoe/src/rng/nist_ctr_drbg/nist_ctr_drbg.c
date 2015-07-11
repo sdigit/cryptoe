@@ -78,7 +78,7 @@ static NIST_Key nist_cipher_zero_ctx;
  * Global Constants
  */
 static const unsigned int
-    nist_ctr_drgb_generate_null_input[NIST_BLOCK_SEEDLEN_INTS] = { 0 };
+    nist_ctr_drbg_generate_null_input[NIST_BLOCK_SEEDLEN_INTS] = { 0 };
 
 /*
  * Utility
@@ -630,7 +630,7 @@ nist_ctr_drbg_generate(NIST_CTR_DRBG * drbg,
 	/* [6] (Key, V) = Update(additional_input, Key, V) */
 	nist_ctr_drbg_update(drbg, additional_input ?
 		&additional_input_buffer[0] :
-		&nist_ctr_drgb_generate_null_input[0]);
+		&nist_ctr_drbg_generate_null_input[0]);
 
 	/* [7] reseed_counter = reseed_counter + 1 */
 	++drbg->reseed_counter;

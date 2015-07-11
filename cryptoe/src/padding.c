@@ -24,8 +24,8 @@
  * SUCH DAMAGE.
  */
 
-#include "cryptoe.h"
 #include <sys/types.h>
+#include "padding.h"
 
 int
 pad(msg,msg_len,padded_len)

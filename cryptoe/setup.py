@@ -7,14 +7,26 @@ RDRAND = Extension('cryptoe.Hardware.RDRAND',
                    include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                    sources=['src/rng/rdrand.c',
                             'src/rng/pyrdrand.c'])
+
 shad256_ext = Extension('cryptoe.Hash.SHAd256',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
                         sources=['src/hash/SHAd256.c'])
 
 ext_mods = [RDRAND, shad256_ext]
 
-# LNXKeyring_ext is only useful on Linux...
+DRBG = Extension('cryptoe.Random._CTR_DRBG',
+                 include_dirs=[os.path.join(os.getcwd(), 'src', 'include'),
+                               os.path.join(os.getcwd(), 'src', 'rng')],
+                 sources=['src/os/PY_os.c',
+                          'src/os/common.c',
+                          'src/rng/nist_ctr_drbg/nist_ctr_drbg.c',
+                          'src/rng/nist_ctr_drbg/rijndael-alg-fst.c',
+                          'src/rng/nist_ctr_drbg/rijndael-api-fst.c',
+                          'src/rng/nist_ctr_drbg/rijndael.c'])
+
 if os.uname()[0] == 'Linux':
+
+    # LNXKeyring_ext is only useful on Linux
     LNXKeyring_ext = Extension('cryptoe.OS.LNXKeyring',
                                sources=['src/secrets/LNXKeyring.c'],
                                libraries=['keyutils', 'bsd'])
@@ -30,9 +42,9 @@ setup(
     packages=[
         'cryptoe',
         'cryptoe.Hash',
+        'cryptoe.OS',
         'cryptoe.Random',
         'cryptoe.Hardware',
-        'cryptoe.OS',
     ],
     py_modules=[
         'cryptoe.exceptions',
@@ -40,7 +52,6 @@ setup(
         'cryptoe.KeyMgmt',
         'cryptoe.KeyDB',
         'cryptoe.KeyWrap',
-        'cryptoe.OS.Specific',
     ],
     ext_modules=ext_mods,
     requires=[
