@@ -1,6 +1,5 @@
 #ifndef SHAD256_H
 # define SHAD256_H
-#include "Python.h"
 #include <stdint.h>
 #include <inttypes.h>
 /*
