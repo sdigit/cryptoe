@@ -66,8 +66,11 @@
 
 #include "nist_ctr_aes_rijndael.h"
 
-/* Use AES-128 as the block cipher */
-#include "nist_ctr_drbg_aes128.h"
+#ifdef CTR_DRBG_USE_AES128 /* Use AES-128 as the block cipher */
+# include "nist_ctr_drbg_aes128.h"
+#else
+# include "nist_ctr_drbg_aes256.h"
+#endif
 
 #endif /* NIST_CTR_DRBG_CONFIG_H */
 
