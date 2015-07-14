@@ -1,32 +1,13 @@
 /*
- * An implementation of the SHAd256 hash function.
+ * Some or all of this code was written by Sean Davis.
  *
- * Implemented per Schneier & Ferguson, Cryptography Engineering, section 5.4.2.
- *
- * Adapted by Sean Davis, dive@endersgame.net
- *
- * ===================================================================
- * The contents of this file are dedicated to the public domain.  To
- * the extent that dedication to the public domain is not available,
- * everyone is granted a worldwide, perpetual, royalty-free,
- * non-exclusive license to exercise all rights associated with the
- * contents of this file for any purpose whatsoever.
- * No rights are reserved.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- * ===================================================================
- *
+ * This notice is intended to indicate that those portions are placed in the
+ * public domain.
  */
 
-#include "SHAd256.h"
+#include <Python.h>
 #include <string.h>
+#include "SHAd256.h"
 
 static uint8_t zero_block[64] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
