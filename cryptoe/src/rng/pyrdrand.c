@@ -28,12 +28,10 @@
 
 #include <Python.h>
 #include <inttypes.h>
-#include "rdrand.h"
+#include "rng/rdrand.h"
 
 static PyObject *rdrand64(PyObject *, PyObject *);
 static PyObject *rdrand_bytes(PyObject *, PyObject *);
-
-static int RDRAND_OK = 0;
 
 /*
  * RDRAND
@@ -86,6 +84,7 @@ rdrand64(self,args)
         return retval;
     } else {
         free(data);
+        PyErr_SetString(PyExc_RuntimeError, "RDRAND failure");
         return NULL;
     }
 }
@@ -182,13 +181,8 @@ static PyMethodDef RDRAND_methods[] = {
 PyMODINIT_FUNC
 initRDRAND(void)
 {
-    if (RdRand_isSupported())
-    {
-        RDRAND_OK = 1;
-    }
-    else
-    {
-        RDRAND_OK = 0;
+    if (! RdRand_isSupported())
+        PyErr_SetString(PyExc_NotImplementedError,"RDRAND is not supported on this machine");
     }
     Py_InitModule3("cryptoe.Hardware.RDRAND", RDRAND_methods, RDRAND_doc);
 }
