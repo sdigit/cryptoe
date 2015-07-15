@@ -36,25 +36,17 @@ static PyObject *rdrand_bytes(PyObject *, PyObject *);
 /*
  * RDRAND
  */
-PyDoc_STRVAR(rdrand64_doc,"rdrand_64(num): return num random numbers\n");
+PyDoc_STRVAR(rdrand64_doc,"rdrand_64(num): return num random 64-bit numbers\n");
 static PyObject *
 rdrand64(self,args)
     PyObject *self;
     PyObject *args;
 {
-    if (RDRAND_OK == 0)
-    {
-        PyErr_SetString(PyExc_NotImplementedError, "RDRAND is not supported on this platform");
-        return NULL;
-    }
-
     unsigned int rdrand_arg;
-    int rdrand_ret;
-    uint64_t *data;
-
     if (!PyArg_ParseTuple(args, "I", &rdrand_arg))
         return NULL;
 
+    uint64_t *data;
     data = malloc(sizeof(uint64_t) * rdrand_arg);
     if (data == NULL)
     {
@@ -62,11 +54,12 @@ rdrand64(self,args)
         return NULL;
     }
 
+    int rdrand_ret;
     rdrand_ret = rdrand_get_n_64(rdrand_arg, data);
     if (rdrand_ret == RDRAND_NOT_READY)
     {
         free(data);
-        PyErr_NoMemory();
+        PyErr_SetString(PyExc_RuntimeError, "RDRAND failure");
         return NULL;
     }
     else if (rdrand_ret == RDRAND_SUCCESS)
@@ -95,40 +88,40 @@ rdrand_bytes(self,args)
     PyObject *self;
     PyObject *args;
 {
-    if (RDRAND_OK == 0)
-    {
-        PyErr_SetString(PyExc_NotImplementedError, "RDRAND is not supported on this platform");
-        return NULL;
-    }
     unsigned int rdrand_arg;
-    int rdrand_ret;
-    unsigned char *buf;
-
     if (!PyArg_ParseTuple(args, "I", &rdrand_arg))
         return NULL;
 
-    buf = (unsigned char *)malloc(rdrand_arg);
+    unsigned char *buf;
+    buf = malloc(rdrand_arg);
     if (buf == NULL)
     {
         PyErr_NoMemory();
         return NULL;
     }
 
+    int rdrand_ret;
     rdrand_ret = rdrand_get_bytes(rdrand_arg, buf);
     if (rdrand_ret == RDRAND_NOT_READY)
     {
+        memset(buf,0,rdrand_arg);
         free(buf);
-        PyErr_NoMemory();
+        PyErr_SetString(PyExc_RuntimeError, "RDRAND failure");
         return NULL;
     }
     else if (rdrand_ret == RDRAND_SUCCESS)
     {
         PyObject *retval;
-        retval = PyString_FromStringAndSize((const char *)buf, rdrand_arg);
+        retval = PyBytes_FromStringAndSize((const char *)buf, rdrand_arg);
+        memset(buf,0,rdrand_arg);
         free(buf);
         return retval;
-    } else {
+    }
+    else
+    {
+        memset(buf,0,rdrand_arg);
         free(buf);
+        PyErr_SetString(PyExc_RuntimeError, "RDRAND failure");
         return NULL;
     }
 }
@@ -183,6 +176,5 @@ initRDRAND(void)
 {
     if (! RdRand_isSupported())
         PyErr_SetString(PyExc_NotImplementedError,"RDRAND is not supported on this machine");
-    }
     Py_InitModule3("cryptoe.Hardware.RDRAND", RDRAND_methods, RDRAND_doc);
 }
