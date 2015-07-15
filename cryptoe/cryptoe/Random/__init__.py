@@ -8,8 +8,12 @@ from cryptoe.Random import _ParanoidRNG
 # noinspection PyUnusedLocal
 def new(*args, **kwargs):
     """
-    Return a file-like object that outputs cryptographically random bytes.
-    Ignore args and kwargs as they do not matter for this RNG.
+    Return a file-like object used for getting random bytes from the Fortuna CSPRNG.
+    Entropy input consists of clock_gettime (both CLOCK_REALTIME and CLOCK_MONOTONIC)
+    as well as data from the OS-provided /dev/urandom, and (if available) RDRAND.
+
+    A future version will implement CTR_DRBG per NIST SP800-90A such that each instance
+    of Fortuna has its own instance of CTR_DRBG to help further mix the entropy input.
     """
     return _ParanoidRNG.new()
 

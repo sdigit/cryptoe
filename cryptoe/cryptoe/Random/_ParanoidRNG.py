@@ -26,20 +26,20 @@ class _EntropySource(object):
 
 class _EntropyCollector(object):
     def __init__(self, accumulator):
-        from cryptoe.Hardware import RDRAND
-
         self._nsrc = 255
         self._srcs = OrderedDict()
-        self._rdrand = RDRAND
         self._osrng = OSRNG.new()
         self._rng_lock = threading.Lock()
         self._src_lock = threading.Lock()
-
         self.add_source('osrng', accumulator)
         self.add_source('time', accumulator)
         self.add_source('clock', accumulator)
-        if check_for_rdrand():
-            self.add_source('rdrand', accumulator)
+        try:
+            # noinspection PyUnresolvedReferences
+            from cryptoe.Hardware import RDRAND
+            self._rdrand = RDRAND
+        except ImportError:
+            """Nothing yet."""
 
     @property
     def using_rdrand(self):
@@ -275,13 +275,3 @@ def reinit():
 def get_random_bytes(n):
     """Return the specified number of cryptographically-strong random bytes."""
     return _get_singleton().read(n)
-
-
-def check_for_rdrand():
-    try:
-        from cryptoe.Hardware import RDRAND
-
-        assert (len(RDRAND.rdrand_64(32)) == 32)
-        return True
-    except NotImplementedError:
-        return False
