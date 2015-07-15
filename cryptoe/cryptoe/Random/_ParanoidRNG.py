@@ -34,6 +34,14 @@ class _EntropyCollector(object):
         self.add_source('osrng', accumulator)
         self.add_source('time', accumulator)
         self.add_source('clock', accumulator)
+        self._counters = {}
+        if os.uname()[0] in ['NetBSD', 'Linux']:
+            # noinspection PyUnresolvedReferences
+            from cryptoe.Random import DRBG
+            for x in xrange(0, 32):
+                ctr = 'ctr_drbg' + str(x)
+                self._counters[ctr] = DRBG.new()
+                self.add_source(ctr, accumulator)
         try:
             # noinspection PyUnresolvedReferences
             from cryptoe.Hardware import RDRAND
@@ -77,6 +85,9 @@ class _EntropyCollector(object):
         self._srcs['time'].feed(pack_integer_le(4, int(ceil(tm))))
         ck = clock()
         self._srcs['clock'].feed(pack_integer_le(4, int(2 ** 30 * (ck - floor(ck)))))
+        if len(self._counters) > 0:
+            for ctr in self._counters:
+                self._srcs[ctr].feed(self._counters[ctr].read(16))
 
     def reinit(self):
         """
