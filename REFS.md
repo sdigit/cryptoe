@@ -11,6 +11,7 @@ This table is not complete.
   <td>NIST</td>
   <td>SP 800-38A: Recommendation for Block Cipher Modes of Operation: Methods and Techniques</td>
   <td>SP800-38A</td>
+ </tr>
  <tr>
   <td>NIST</td>
   <td>SP 800-38F: Recommendation for Block Cipher Modes of Operation: Methods for Key Wrapping</td>
@@ -20,6 +21,21 @@ This table is not complete.
   <td>NIST</td>
   <td>SP 800-56C: Recommendation for Key Derivation through Extraction-then-Expansion</td>
   <td>SP800-56C</td>
+ </tr>
+ <tr>
+  <td>NIST</td>
+  <td>SP 800-90Ar1: Recommendation for Random Number Generation Using Deterministic Random Bit Generators</td>
+  <td>SP800-90Ar1</td>
+ </tr>
+ <tr>
+  <td>NIST</td>
+  <td>(draft) SP 800-90B: Recommendation for the Entropy Sources Used for Random Bit Generation</td>
+  <td>SP800-90B</td>
+ </tr>
+ <tr>
+  <td>NIST</td>
+  <td>(draft) SP 800-90C: Recommendation for Random Bit Generator (RBG) Constructions</td>
+  <td>SP800-90C</td>
  </tr>
  <tr>
   <td>NIST</td>
@@ -35,11 +51,6 @@ This table is not complete.
   <td>IETF</td>
   <td>RFC 5869: HMAC-based Extract-and-Expand Key Derivation Function (HKDF)</td>
   <td>RFC5869</td>
- </tr>
- <tr>
-  <td>IETF</td>
-  <td>RFC 5297: Synthetic Initialization Vector (SIV) Authenticated Encryption Using the Advanced Encryption Standard (AES)</td>
-  <td>RFC5297</td>
  </tr>
  <tr>
   <td>Niels Ferguson, Bruce Schneier, Tadayoshi Kohno</td>

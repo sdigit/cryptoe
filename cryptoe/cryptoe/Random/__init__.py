@@ -1,5 +1,5 @@
 __author__ = 'Sean Davis <dive@endersgame.net>'
-__all__ = ['new']
+__all__ = ['new', 'DRBG']
 
 # noinspection PyProtectedMember
 from cryptoe.Random import _ParanoidRNG
@@ -26,3 +26,17 @@ def atfork():
 def get_random_bytes(n):
     """Return the specified number of cryptographically-strong random bytes."""
     return _ParanoidRNG.get_random_bytes(n)
+
+
+_new_funcs = {}
+
+
+def _DRBG_new(*args):
+    # noinspection PyUnresolvedReferences
+    from cryptoe.Random import DRBG
+    _new_funcs['DRBG'] = _new_funcs['DRBG'] = DRBG.new
+    return DRBG.new(*args)
+
+
+_new_funcs['DRBG'] = _new_funcs['DRBG'] = _DRBG_new
+del _DRBG_new

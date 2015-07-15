@@ -1,7 +1,10 @@
+* Go through SHAd256 C code and rename things like BLOCK_SIZE/DIGEST_SIZE to remove ambiguity
+* Same for NIST CTR_DRBG code, but probably less necessary
+* C cleanup in general
+* Incorporate crypto.Random.DRBG into crypto.Random._ParanoidRNG when it is detected
 * Derive a MAC key from PBKDF2 output, use it for integrity checking of salts
 * Now that the basic key database works, extend it to store cipher metadata (bytes encrypted with a key, times a key has been used)
 * Have the DB initialization also derive a seed value for IVs, and store IVs used in encrypted form
-* Start working on OpenSC support for derivation of the database master secret (once hardware arrives)
 
 * Cipher support:
  * Add interface for data encryption, namely files and arbitrary strings.
@@ -9,7 +12,5 @@
   * Once that works, add GCM (and once GCM is tested, use GCM by default)
 
 * KMS API:
- * Tie into Linux kernel keystore support for private keys
-  * this way keys can be 'checked out' of the DB, unwrapped and stored in a keychain with an expiration
-  * Add a default expiration to the database keys table
+ * Add a default expiration to the database keys table
  * Create a class for requesting a key from the keystore
