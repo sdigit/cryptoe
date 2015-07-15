@@ -30,7 +30,7 @@
 #ifndef __RIJNDAEL_H
 #define	__RIJNDAEL_H
 
-#include "rijndael-alg-fst.h"
+#include "rng/rijndael-alg-fst.h"
 
 typedef struct {
 	int	decrypt;

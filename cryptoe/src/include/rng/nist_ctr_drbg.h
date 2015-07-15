@@ -1,4 +1,4 @@
-/*	$NetBSD: nist_ctr_drbg_config.h,v 1.1 2011/11/19 22:51:22 tls Exp $ */
+/*	$NetBSD: nist_ctr_drbg.h,v 1.2 2011/11/21 23:48:52 macallan Exp $ */
 
 /*-
  * Copyright (c) 2011 The NetBSD Foundation, Inc.
@@ -46,31 +46,62 @@
  */
 
 /*
- * NIST SP 800-90 Configuration (Random Number Generator)
+ * NIST SP 800-90 CTR_DRBG (Random Number Generator)
  */
 
-#ifndef NIST_CTR_DRBG_CONFIG_H
-#define NIST_CTR_DRBG_CONFIG_H
+#ifndef NIST_CTR_DRBG_H
+#define NIST_CTR_DRBG_H
 
-/*
- * The test vectors will indicate failure if the
- * byte ordering is set incorrectly.
- * Pretending to be little endian will improve performance
- * slightly but should not have an impact on
- * security (a byte-swapped nonce is still a nonce).
- */
-#define NIST_IS_LITTLE_ENDIAN 1
+#include "rng/nist_ctr_drbg_config.h"
 
-/* Without NIST_ZEROIZE, we leave some intermediaries on the stack. */
-#define NIST_ZEROIZE 1
+#define NIST_BLOCK_SEEDLEN		    (NIST_BLOCK_KEYLEN + NIST_BLOCK_OUTLEN)
+#define NIST_BLOCK_SEEDLEN_BYTES	(NIST_BLOCK_SEEDLEN / 8)
+#define NIST_BLOCK_SEEDLEN_INTS		(NIST_BLOCK_SEEDLEN_BYTES / sizeof(int))
 
-#include "nist_ctr_aes_rijndael.h"
+typedef struct {
+	unsigned int reseed_counter;
+	NIST_Key ctx;
+	unsigned int V[NIST_BLOCK_OUTLEN_INTS] __attribute__ ((aligned(8)));
+} NIST_CTR_DRBG;
 
-#ifdef CTR_DRBG_USE_AES128 /* Use AES-128 as the block cipher */
-# include "nist_ctr_drbg_aes128.h"
+int nist_ctr_initialize(void);
+int nist_ctr_drbg_generate(NIST_CTR_DRBG *, void *, int, const void *, int);
+int nist_ctr_drbg_reseed(NIST_CTR_DRBG *, const void *, int,
+			 const void *, int);
+int nist_ctr_drbg_instantiate(NIST_CTR_DRBG *, const void *, int,
+			      const void *, int, const void *, int);
+int nist_ctr_drbg_destroy(NIST_CTR_DRBG *);
+
+#ifdef NIST_ZEROIZE
+#define nist_zeroize(p, s) memset(p, 0, s)
 #else
-# include "nist_ctr_drbg_aes256.h"
+#define nist_zeroize(p, s) do { } while(0)
 #endif
 
-#endif /* NIST_CTR_DRBG_CONFIG_H */
+#ifdef NIST_IS_LITTLE_ENDIAN	/* Faster, as secure, won't pass KAT */
+#define NIST_HTONL(x) (x)
+#define NIST_NTOHL(x) (x)
+#else
+static inline unsigned long
+NIST_HTONL(unsigned long x)
+{
+	switch(sizeof(long)) {
+	    case 4:
+		return be32toh(x);
+	    default:
+		return be64toh(x);
+	{
+}
+static inline unsigned long
+NIST_NTOHL(unsigned long x)
+{
+	switch(sizeof(long)) {
+	    case 4:
+		return htobe32(x);
+	    default:
+		return htobe64(x);
+}
+#endif
+
+#endif /* NIST_CTR_DRBG_H */
 

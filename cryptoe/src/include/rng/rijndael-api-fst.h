@@ -40,7 +40,7 @@
 #ifndef __RIJNDAEL_API_FST_H
 #define __RIJNDAEL_API_FST_H
 
-#include "rijndael-alg-fst.h"
+#include "rng/rijndael-alg-fst.h"
 
 /*  Generic Defines  */
 #define     DIR_ENCRYPT           0 /*  Are we encrpyting?  */

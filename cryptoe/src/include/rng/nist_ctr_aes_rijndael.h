@@ -52,7 +52,7 @@
 #ifndef NIST_AES_RIJNDAEL_H
 #define NIST_AES_RIJNDAEL_H
 
-#include "rijndael.h"
+#include "rng/rijndael.h"
 
 #define NIST_AES_MAXKEYBITS		256
 #define NIST_AES_MAXKEYBYTES	(NIST_AES_MAXKEYBITS / 8)
