@@ -1,5 +1,7 @@
 __author__ = 'Sean Davis <dive@endersgame.net>'
 __all__ = ['SHAd256', 'whirlpool']
+from cryptoe.Hash import SHAd256
+import whirlpool
 
 
 def new(algo, *args):
@@ -49,7 +51,6 @@ _new_funcs = {}
 
 
 def _whirlpool_new(*args):
-    import whirlpool
     _new_funcs['whirlpool'] = _new_funcs['whirlpool'] = whirlpool.new
     return whirlpool.new(*args)
 
@@ -59,7 +60,6 @@ del _whirlpool_new
 
 
 def _shad256_new(*args):
-    from cryptoe.Hash import SHAd256
     _new_funcs['SHAd256'] = _new_funcs['shad256'] = SHAd256.new
     return SHAd256.new(*args)
 

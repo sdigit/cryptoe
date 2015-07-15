@@ -69,9 +69,9 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "rijndael_local.h"
-#include "rijndael-alg-fst.h"
-#include "rijndael-api-fst.h"
+#include "rng/rijndael_local.h"
+#include "rng/rijndael-alg-fst.h"
+#include "rng/rijndael-api-fst.h"
 
 static void xor16(uint8_t *d, const uint8_t *a, const uint8_t* b)
 {

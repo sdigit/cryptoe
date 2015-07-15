@@ -57,8 +57,8 @@
 #include <sys/types.h>
 #include <string.h>
 
-#include "rijndael-alg-fst.h"
-#include "rijndael_local.h"
+#include "rng/rijndael-alg-fst.h"
+#include "rng/rijndael_local.h"
 
 /*
 Te0[x] = S [x].[02, 01, 01, 03];

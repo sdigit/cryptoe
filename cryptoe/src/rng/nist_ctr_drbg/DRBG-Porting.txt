@@ -16,7 +16,9 @@ Copied nist_ctr_drbg from NetBSD kernel sources:
      $NetBSD: nist_ctr_drbg_aes256.h,v 1.2 2011/12/17 20:05:38 tls Exp $
      $NetBSD: nist_ctr_drbg_config.h,v 1.1 2011/11/19 22:51:22 tls Exp $
 
-changed the includes referencing rijndael & nist_ctr_drbg to be relative pathsfixed minor whitespace nits (tabstops in macros)
+changed the includes referencing rijndael & nist_ctr_drbg to be relative paths
+
+fixed minor whitespace nits (tabstops in macros)
 
 removed __KERNEL_RCSID's (Linux won't understand those)
 
@@ -46,6 +48,4 @@ $ cc -c -Wall -Wunused-result -Wstrict-prototypes -Werror rijndael-api-fst.c
 $ cc -c -Wall -Wunused-result -Wstrict-prototypes -Werror rijndael.c
 $ ar rcs nist_ctr_drbg.a nist_ctr_drbg.o rijndael-alg-fst.o rijndael-api-fst.o rijndael.o
 
-## Committing these changes before proceeding with integration ##
-
-
+Code is now usable.

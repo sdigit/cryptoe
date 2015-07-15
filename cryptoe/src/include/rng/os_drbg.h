@@ -24,13 +24,11 @@
  * SUCH DAMAGE.
  */
 
-#include <inttypes.h>
-#include <time.h>
+/*
+ * A wrapper API for os-specific implementations of CTR_DRBG, intended only for
+ * one use per instantiation. This is meant to be used to seed CTR_DRBG and
+ * (optionally) provide additional data.
+ */
 
-struct clocks {
-    struct timespec ts_mono;
-    struct timespec ts_real;
-};
-
-int get_clocks(struct clocks *);
-
+int read_os_drbg(unsigned char *,size_t);         /* bytes desired */
+size_t read_os_values(unsigned char *, size_t);   /* seed values */

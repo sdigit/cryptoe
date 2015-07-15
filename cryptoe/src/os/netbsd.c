@@ -27,7 +27,14 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <string.h>
-#include "os_drbg.h"
+#include "rng/os_drbg.h"
+
+#ifdef TESTING
+# include <stdio.h>
+# include <stdlib.h>
+# include <time.h>
+# include <sys/timex.h>
+#endif /* TESTING */
 
 int read_os_drbg(obuf,outlen)
     unsigned char *obuf;
@@ -39,3 +46,87 @@ int read_os_drbg(obuf,outlen)
     return sysctl(mib,2,obuf,&ol,NULL,0);
 }
 
+#define OS_SEED_BYTES_AVAILABLE ( \
+    (sizeof(long) * 2) + \
+    (sizeof(quad) * 2))
+
+
+#ifdef TESTING
+struct mib mibs[] = {
+    {{CTL_KERN,KERN_HARDCLOCK_TICKS},"kern.hardclock_ticks",handle_int},
+    {{CTL_KERN,KERN_NTPTIME},"kern.ntptime",handle_ntptimeval},
+    {{CTL_KERN,KERN_TIMEX},"kern.timex",NULL},
+    {{CTL_KERN,KERN_BOOTTIME},"kern.boottime",handle_timespec},
+    {{CTL_KERN,KERN_TKSTAT},"kern.tkstat",NULL},
+    {{0,0},NULL}};
+
+
+
+void
+handle_int(n,i)
+    const char *n;
+    int *i;
+{
+    printf("%s: %d\n",n,*i);
+    free(i);
+}
+
+void
+handle_timespec(n,i)
+    const char *n;
+    struct timespec *i;
+{
+    printf("%s: {%lu,%lu}\n",n,i->tv_sec,i->tv_nsec);
+    free(i);
+}
+
+void
+handle_ntptimeval(n,i)
+    const char *n;
+    struct ntptimeval *i;
+{
+    printf("%s: time:       {%lu,%lu}\n",n,i->time);
+    printf("%s: maxerror:   %ld\n",n,i->maxerror);
+    printf("%s: esterror:   %ld\n",n,i->esterror);
+    printf("%s: tai:        %ld\n",n,i->tai);
+    printf("%s: time_state: %d\n",n,i->time_state);
+    free(i);
+}
+
+
+struct mib {
+    int mib[2];
+    char *name;
+    void (*func)(const char *,void *);
+};
+
+
+int
+main(argc,argv)
+    int argc;
+    char **argv;
+{
+    int i = 0;
+    do {
+        uint64_t sz;
+        sysctl(mibs[i].mib,2,NULL,&sz,NULL,0);
+        printf("%-20s {%d,%d} = %lu\n",
+               mibs[i].name,
+               mibs[i].mib[0],
+               mibs[i].mib[1],
+               sz);
+        if (mibs[i].func != NULL)
+        {
+            void *buf;
+            buf = (void *)malloc(sz);
+            sysctl(mibs[i].mib,2,buf,&sz,NULL,0);
+            mibs[i].func(mibs[i].name,buf);
+        }
+        i++;
+    } while (!(mibs[i].mib[0] == 0 && mibs[i].mib[1] == 0));
+    printf("ntptimeval: %lu\n",sizeof(struct ntptimeval));
+    printf("timex: %lu\n",sizeof(struct timex));
+    exit(0);
+}
+
+#endif /* TESTING */

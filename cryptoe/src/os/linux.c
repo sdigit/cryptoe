@@ -35,7 +35,7 @@
 #include <unistd.h>
 #include <bsd/string.h>
 #include <time.h>
-#include "os_drbg.h"
+#include "rng/os_drbg.h"
 
 #ifndef AF_ALG
 # define AF_ALG 38
@@ -50,6 +50,7 @@ read_os_drbg(buf,buflen)
     size_t buflen;
 {
     int afd, rfd;
+    ssize_t rret;
     struct sockaddr_alg sa;
 
     memset(&sa, 0, sizeof(sa));
@@ -80,7 +81,12 @@ read_os_drbg(buf,buflen)
         return -1;
     }
 
-    read(rfd,buf,buflen);
+    rret = read(rfd,buf,buflen);
+    if (rret != buflen)
+    {
+        memset(buf,0,buflen);
+        return -1;
+    }
     close(rfd);
     close(afd);
     return 0;

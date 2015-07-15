@@ -55,7 +55,7 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <inttypes.h>
-#include "rijndael.h"
+#include "rng/rijndael.h"
 
 void
 rijndael_set_key(rijndael_ctx *ctx, const u_char *key, int bits)

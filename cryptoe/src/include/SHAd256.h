@@ -26,7 +26,7 @@
 #define ROTR(x, n)  (((x)>>((n)&(WORD_SIZE_BITS-1)))|((x)<<(WORD_SIZE_BITS-((n)&(WORD_SIZE_BITS-1)))))
 #define SHR(x, n)   ((x)>>(n))
 
-typedef struct{
+typedef struct {
     uint32_t state[8];
     int curlen;
     uint32_t length_upper, length_lower;

@@ -79,7 +79,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <assert.h>
-#include "nist_ctr_drbg.h"
+#include "rng/nist_ctr_drbg.h"
 
 /*
  * NIST SP 800-90 March 2007
@@ -182,7 +182,7 @@ check_int_alignment(const void *p)
 
 	if (ip & (sizeof(int) - 1))
 		return 0;
-	
+
 	return 1;
 }
 
@@ -211,7 +211,7 @@ nist_ctr_drbg_df_bcc_update(NIST_CTR_DRBG_DF_BCC_CTX *ctx,
 		len = NIST_BLOCK_OUTLEN_BYTES - index;
 		if (input_string_length < len)
 			len = input_string_length;
-		
+
 		memcpy(&S[index], input_string, len);
 
 		index += len;
@@ -318,7 +318,7 @@ nist_ctr_drbg_block_cipher_df(const char *input_string[], unsigned int L[],
 	for (j = 0; j < NIST_BLOCK_SEEDLEN / NIST_BLOCK_OUTLEN; ++j) {
 		/* [9.2] temp = temp || BCC(K, (IV || S)) */
 
-		/* Since we have precomputed BCC(K, IV), we start with that... */ 
+		/* Since we have precomputed BCC(K, IV), we start with that... */
 		memcpy(&temp[0], &nist_cipher_df_encrypted_iv[j][0],
 		       NIST_BLOCK_OUTLEN_BYTES);
 
@@ -405,7 +405,7 @@ nist_ctr_drbg_block_cipher_df_initialize(void)
 		 */
 		nist_ctr_drbg_bcc(&nist_cipher_df_ctx, &IV[0], 1,
 				  (unsigned int *)
-				  &nist_cipher_df_encrypted_iv[i][0]); 
+				  &nist_cipher_df_encrypted_iv[i][0]);
 	}
 
 	return 0;
@@ -468,7 +468,7 @@ nist_ctr_drbg_instantiate(NIST_CTR_DRBG* drbg,
 	/* [1] seed_material = entropy_input ||
 	 *     nonce || personalization_string
 	 */
-	
+
 	input_string[0] = entropy_input;
 	length[0] = entropy_input_length;
 
@@ -540,7 +540,7 @@ nist_ctr_drbg_reseed(NIST_CTR_DRBG *drbg,
 	if (additional_input) {
 		input_string[count] = additional_input;
 		length[count] = additional_input_length;
-		
+
 		++count;
 	}
 	/* [2] seed_material = Block_Cipher_df(seed_material, seedlen) */
@@ -633,7 +633,7 @@ nist_ctr_drbg_generate(NIST_CTR_DRBG * drbg,
 
 		output_string = (unsigned char *)temp;
 	}
-	
+
 	/* [3] temp = Null */
 	temp = buffer;
 
