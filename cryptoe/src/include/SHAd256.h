@@ -31,11 +31,11 @@ typedef struct{
     int curlen;
     uint32_t length_upper, length_lower;
     unsigned char buf[BLOCK_SIZE];
-} hash_state;
+} sha2_state;
 
-/* NB: only compares up to the first NUL byte */
-# define PyString_CompareWithASCIIString(o,s) \
-    (PyString_Check(o) ? strcmp(PyString_AsString(o),(s)) : -1)
+void SHAd256_init (sha2_state *);
+void SHAd256_update (sha2_state *,const uint8_t *,int);
+void SHAd256_digest(sha2_state *, uint8_t *,int);
 
 #endif /* SHAD256_H */
 
