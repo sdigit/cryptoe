@@ -1,8 +1,6 @@
 __author__ = 'Sean Davis <dive@endersgame.net>'
 __all__ = ['SHAd256', 'whirlpool']
 
-import whirlpool
-
 
 def new(algo, *args):
     """Initialize a new hash object.
@@ -32,15 +30,16 @@ def new(algo, *args):
         except AttributeError:
             raise ValueError("unsupported hash type %r" % (algo,))
 
-    # Got the name.  Let's see if we have a PyCrypto implementation.
+    # Got the name.  Let's see if we have a PyCrypto^Wcryptoe implementation.
     try:
         new_func = _new_funcs[name]
-    # if not, fail, because hashlib relies on openssl. do not use it.
+    # if not, fail. Don't fall back to hashlib as it's OpenSSL-based.
     except KeyError:
         raise ValueError("unsupported hash type %s" % (name,))
     else:
         # We have a PyCrypto implementation.  Instantiate it.
         return new_func(*args)
+
 
 # This dict originally gets the following _*_new methods, but its members get
 # replaced with the real new() methods of the various hash modules as they are
@@ -49,23 +48,21 @@ def new(algo, *args):
 _new_funcs = {}
 
 
-def _shad256_new(*args):
-    from cryptoe.Hash import SHAd256
-
-    _new_funcs['SHAd256'] = _new_funcs['shad256'] = SHAd256.new
-    return SHAd256.new(*args)
-
-
-_new_funcs['SHAd256'] = _new_funcs['shad256'] = _shad256_new
-del _shad256_new
-
-
 def _whirlpool_new(*args):
     import whirlpool
-
     _new_funcs['whirlpool'] = _new_funcs['whirlpool'] = whirlpool.new
     return whirlpool.new(*args)
 
 
 _new_funcs['whirlpool'] = _new_funcs['whirlpool'] = _whirlpool_new
 del _whirlpool_new
+
+
+def _shad256_new(*args):
+    from cryptoe.Hash import SHAd256
+    _new_funcs['SHAd256'] = _new_funcs['shad256'] = SHAd256.new
+    return SHAd256.new(*args)
+
+
+_new_funcs['SHAd256'] = _new_funcs['shad256'] = _shad256_new
+del _shad256_new

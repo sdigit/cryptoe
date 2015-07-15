@@ -10,23 +10,24 @@ RDRAND = Extension('cryptoe.Hardware.RDRAND',
 
 shad256_ext = Extension('cryptoe.Hash.SHAd256',
                         include_dirs=[os.path.join(os.getcwd(), 'src', 'include')],
-                        sources=['src/hash/SHAd256.c'])
+                        sources=['src/hash/SHAd256.c',
+                                 'src/hash/_SHAd256.c'])
 
 ext_mods = [RDRAND, shad256_ext]
 
-DRBG = Extension('cryptoe.Random._CTR_DRBG',
-                 include_dirs=[os.path.join(os.getcwd(), 'src', 'include'),
-                               os.path.join(os.getcwd(), 'src', 'rng')],
-                 sources=['src/os/PY_os.c',
-                          'src/os/common.c',
-                          'src/rng/nist_ctr_drbg/nist_ctr_drbg.c',
-                          'src/rng/nist_ctr_drbg/rijndael-alg-fst.c',
-                          'src/rng/nist_ctr_drbg/rijndael-api-fst.c',
-                          'src/rng/nist_ctr_drbg/rijndael.c'])
+if os.uname()[0] in ['Linux', 'NetBSD']:
+    oslower = os.uname()[0].lower()
+    DRBG = Extension('cryptoe.Random._DRBG',
+                     include_dirs=[os.path.join(os.getcwd(), 'src', 'include'),
+                                   os.path.join(os.getcwd(), 'src', 'rng')],
+                     sources=[
+                         'src/rng/nist_ctr_drbg/nist_ctr_drbg.c',
+                         'src/rng/nist_ctr_drbg/rijndael-alg-fst.c',
+                         'src/rng/nist_ctr_drbg/rijndael-api-fst.c',
+                         'src/rng/nist_ctr_drbg/rijndael.c'])
+    DRBG.sources.append('src/os/' + oslower + '.c')
 
 if os.uname()[0] == 'Linux':
-
-    # LNXKeyring_ext is only useful on Linux
     LNXKeyring_ext = Extension('cryptoe.OS.LNXKeyring',
                                sources=['src/secrets/LNXKeyring.c'],
                                libraries=['keyutils', 'bsd'])
