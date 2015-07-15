@@ -1,13 +1,16 @@
 # PUBLIC DOMAIN
 import os
 import threading
+from collections import OrderedDict
+
 from Crypto.Random import OSRNG
 from Crypto.Random.Fortuna import FortunaAccumulator
-from cryptoe.OS import get_sys_uptime
 from cryptoe.utils import pack_integer_le
-from collections import OrderedDict
+
 from time import clock, time
 from math import floor, ceil
+
+SUPPORTED_SYSTEMS = ['Linux', 'NetBSD']
 
 
 class _EntropySource(object):
@@ -35,8 +38,6 @@ class _EntropyCollector(object):
         self.add_source('osrng', accumulator)
         self.add_source('time', accumulator)
         self.add_source('clock', accumulator)
-        self.add_source('uptime', accumulator)
-
         if check_for_rdrand():
             self.add_source('rdrand', accumulator)
 
@@ -68,13 +69,9 @@ class _EntropyCollector(object):
         """
         self._srcs['osrng'].feed(self._osrng.read(8))
         self._osrng.flush()
-        self._srcs['rdrand'].feed(self._rdrand.rdrand_bytes(32))
-        self._rdrand.rdrand_64(1024)
-        ut_data = get_sys_uptime()
-        for val in ut_data:
-            assert (type(val) == list)
-            assert (len(val) == 2)
-            self._srcs['uptime'].feed(pack_integer_le(val[0], val[1]))
+        if self.using_rdrand:
+            self._srcs['rdrand'].feed(self._rdrand.rdrand_bytes(32))
+            self._rdrand.rdrand_64(1024)
         tm = time()
         self._srcs['time'].feed(pack_integer_le(4, int(2 ** 30 * (tm - floor(tm)))))
         self._srcs['time'].feed(pack_integer_le(4, int(ceil(tm))))
