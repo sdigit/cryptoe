@@ -174,7 +174,7 @@ static PyMethodDef RDRAND_methods[] = {
 PyMODINIT_FUNC
 initRDRAND(void)
 {
-    if (! RdRand_isSupported())
+    if (!RDRAND_present())
         PyErr_SetString(PyExc_NotImplementedError,"RDRAND is not supported on this machine");
     Py_InitModule3("cryptoe.Hardware.RDRAND", RDRAND_methods, RDRAND_doc);
 }

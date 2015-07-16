@@ -60,7 +60,7 @@ POSSIBILITY OF SUCH DAMAGE. */
 
 #define __cpuid(x,y) asm volatile("cpuid":"=a"(x[0]),"=b"(x[1]),"=c"(x[2]),"=d"(x[3]):"a"(y))
 
-int RdRand_cpuid()
+int RDRAND_CPUID()
 {
 	int info[4] = {-1, -1, -1, -1};
 
@@ -83,13 +83,13 @@ int RdRand_cpuid()
 		 return 0;
 }
 
-int RdRand_isSupported()
+int RDRAND_present()
 {
 	static int supported = RDRAND_SUPPORT_UNKNOWN;
 
 	if (supported == RDRAND_SUPPORT_UNKNOWN)
 	{
-		if (RdRand_cpuid())
+		if (RDRAND_CPUID())
 			supported = RDRAND_SUPPORTED;
 		else
 			supported = RDRAND_UNSUPPORTED;
@@ -210,4 +210,3 @@ int rdrand_get_bytes(unsigned int n, unsigned char *dest)
     }
     return RDRAND_SUCCESS;
 }
-
