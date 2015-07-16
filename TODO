@@ -1,16 +1,42 @@
+C:
+
+C1: Add OS-ENT gathering code
+C1.1: OS Entropy
+C1.1.1: Sources
+C1.1.1.1: clock ticks
+C1.1.1.2: current monotonic clock
+C1.1.1.3: number of processes
+C1.1.1.4: hostname
+C1.1.1.5: IP address(es)
+C1.1.1.6: more (anything with a high enough min-entropy to be worth it)
+  * Act like sysctl; if buffer size given is too small, set the size to the needed size, thus only requiring one function exposed in the API
+
 * Go through SHAd256 C code and rename things like BLOCK_SIZE/DIGEST_SIZE to remove ambiguity
-* Same for NIST CTR_DRBG code, but probably less necessary
-* C cleanup in general
-* Incorporate crypto.Random.DRBG into crypto.Random._ParanoidRNG when it is detected
-* Derive a MAC key from PBKDF2 output, use it for integrity checking of salts
-* Now that the basic key database works, extend it to store cipher metadata (bytes encrypted with a key, times a key has been used)
-* Have the DB initialization also derive a seed value for IVs, and store IVs used in encrypted form
+* Implement a wrapper around any given hash function (as long as it can know block and digest size) to apply the zero block and doubling as per SHAd256
+ * Use this on Whirlpool
+ * Add SHAd384, SHAd512
+* Add HMAC and HKDF from RFC6234 library
+ * Use HKDF-Extract and HKDF-Expand for all (C-based) RNG outputs
+  * HKDF-Extract([salt],[prk])
+   * Hardcoded salt (can be overridden) of size [block len]-1
+  * HKDF-Expand([prk],[info])
+   * Info shall depend on the call: similar to existing ADATA code but using the OS-ENT source
 
-* Cipher support:
- * Add interface for data encryption, namely files and arbitrary strings.
-  * Start with (Cipher)-CBC and/or (Cipher)-CTR for confidentiality with HMAC-SHAd256 for authentication
-  * Once that works, add GCM (and once GCM is tested, use GCM by default)
+* Replace timespecs, uids/gids/pids in adata with OS-ENT data
+ * HMAC the OS-ENT data and truncate if smaller input is needed
 
-* KMS API:
- * Add a default expiration to the database keys table
- * Create a class for requesting a key from the keystore
+Python:
+
+P1: KeyDB refactoring
+P1.1: Have the DB initialization also derive a seed value for IVs, and store IVs used in encrypted form
+P1.2: Now that the basic key database works, extend it to store cipher metadata (bytes encrypted with a key, times a key has been used)
+
+
+P3: Cipher support:
+P3.1: Add interface for data encryption, namely files and arbitrary strings.
+P3.2: Start with (Cipher)-CBC and/or (Cipher)-CTR for confidentiality with HMAC-SHAd256 for authentication
+P3.3: Once that works, add GCM (and once GCM is tested, use GCM by default)
+
+P7: KMS API:
+P7.1 Add a default expiration to the database keys table
+P7.2 Create a class for requesting a key from the keystore

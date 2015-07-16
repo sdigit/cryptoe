@@ -82,7 +82,7 @@ read_os_drbg(buf,buflen)
     }
 
     rret = read(rfd,buf,buflen);
-    if (rret != buflen)
+    if ((size_t)rret != buflen)
     {
         memset(buf,0,buflen);
         return -1;

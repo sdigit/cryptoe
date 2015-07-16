@@ -43,9 +43,6 @@
 static int DRBG_STATUS;
 static uint64_t clk_monotonic(void);
 static uint64_t clk_realtime(void);
-static ADATA *new_adata(void);
-static void free_adata(ADATA *);
-static int rbg_genseed(uint8_t *, uint32_t);
 
 static uint64_t
 clk_monotonic()
@@ -80,17 +77,7 @@ new_adata()
         return NULL;
 
     ad->ad_vals.clk_mono = clk_monotonic();
-    if (ad->ad_vals.clk_mono == -1)
-    {
-        free_adata(ad);
-        return NULL;
-    }
     ad->ad_vals.clk_real = clk_realtime();
-    if (ad->ad_vals.clk_real == -1)
-    {
-        free_adata(ad);
-        return NULL;
-    }
     ad->ad_vals.uid = getuid();
     ad->ad_vals.gid = getgid();
     ad->ad_vals.pid = getpid();
@@ -103,7 +90,7 @@ new_adata()
     return ad;
 }
 
-static void
+void
 free_adata(adp)
     ADATA *adp;
 {
@@ -112,7 +99,7 @@ free_adata(adp)
     free(adp);
 }
 
-static int
+int
 rbg_genseed(seed,len)
     uint8_t *seed;
     uint32_t len;
@@ -136,7 +123,7 @@ rbg_genseed(seed,len)
         return FAIL;
     }
     ad = new_adata();
-    int i;
+    uint32_t i;
     if (sizeof(*ad) >= drbg_read_len)
     {
         for (i=0;i<len;i++)

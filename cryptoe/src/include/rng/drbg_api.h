@@ -68,9 +68,10 @@ struct additional_data {
     uint32_t    pid;                /* process id */
 };
 
+#define AD_VAL_BYTES    sizeof(struct additional_data)
 typedef union {
     struct additional_data ad_vals;
-    uint8_t ad_bytes[44];
+    uint8_t ad_bytes[AD_VAL_BYTES];
 } ADATA;
 
 typedef struct {
@@ -84,7 +85,12 @@ typedef struct {
     uint64_t        (*rbg_nonce)(void);
 } RBG;
 
+/* functions used by the drbg_* functions */
+ADATA *new_adata(void);
+void free_adata(ADATA *);
+int rbg_genseed(uint8_t *, uint32_t);
 
+/* functions used directly */
 RBG *drbg_new(void);
 void drbg_destroy(RBG *);
 int drbg_generate(RBG *, uint8_t *, uint32_t);
