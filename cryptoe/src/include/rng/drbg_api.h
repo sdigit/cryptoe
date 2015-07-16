@@ -30,6 +30,7 @@
 #include <inttypes.h>
 #include <sys/time.h>
 #include "rng/nist_ctr_drbg.h"
+#include "RFC6234/sha.h"
 
 #define AD_RBG_BITS         (16*8) /* 16 uint8_t's */
 #define AD_CLK_BITS         (64*2) /* 3 uint64_t's */
@@ -89,7 +90,7 @@ typedef struct {
 ADATA *new_adata(void);
 void free_adata(ADATA *);
 int rbg_genseed(uint8_t *, uint32_t);
-
+int hmac_random(unsigned char *,uint32_t,enum SHAversion);
 /* functions used directly */
 RBG *drbg_new(void);
 void drbg_destroy(RBG *);

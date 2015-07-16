@@ -25,19 +25,26 @@
  */
 
 
+#include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <inttypes.h>
 #include <string.h>
+#include <inttypes.h>
+#include <unistd.h>
+#include <time.h>
 #if defined(__linux__)
 # include <bsd/string.h>
 #endif
-#include <time.h>
-#include <unistd.h>
-#include <stdio.h>
+
+#include <sys/param.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include "rng/rdrand.h"
 #include "rng/nist_ctr_drbg.h"
 #include "rng/os_drbg.h"
 #include "rng/drbg_api.h"
+#include "RFC6234/sha.h"
 #include "SHAd256.h"
 
 static int DRBG_STATUS;
@@ -124,6 +131,7 @@ rbg_genseed(seed,len)
     }
     ad = new_adata();
     uint32_t i;
+    // XXX: HKDF to go here
     if (sizeof(*ad) >= drbg_read_len)
     {
         for (i=0;i<len;i++)
@@ -133,7 +141,7 @@ rbg_genseed(seed,len)
     }
     else
     {
-        abort();
+        // XXX: HKDF
     }
     free_adata(ad);
     return OK;
@@ -157,6 +165,7 @@ drbg_new()
     r->rbg_adata = new_adata;
     r->rbg_nonce = clk_monotonic;
     r->rbg_seed = rbg_genseed;
+
     nistret = nist_ctr_initialize();
     if (nistret != 0)
     {
@@ -193,7 +202,7 @@ drbg_new()
     memset(&s,0,sizeof(sha2_state));
 
     nonce = (r->rbg_nonce)();
-
+    // XXX: HKDF to go here
     nistret = nist_ctr_drbg_instantiate(&r->drbg,
                                         (const void *)&ei,      ei_len,
                                         (const void *)&nonce,   noncelen,
@@ -244,6 +253,7 @@ drbg_generate(r,buf,len)
     }
     ad = new_adata();
 
+
     memcpy(ad_rbg_bytes,ad->ad_vals.rbg,AD_RBG_BYTES);
     free_adata(ad);
     SHAd256_init(&s);
@@ -273,6 +283,7 @@ drbg_generate(r,buf,len)
     nistret = nist_ctr_drbg_generate(&r->drbg,
                                      (void *)buf, (int)len,
                                      (const void *)&ad_rbg_digest, AD_RBG_BYTES);
+    // XXX: HKDF to go here
     r->rbg_outb += len;
     memset(ad_rbg_bytes,0,AD_RBG_BYTES);
     if (nistret != 0)
@@ -305,7 +316,7 @@ drbg_reseed(r, ad, ad_len)
     memset(&ei,0,ei_len);
     SHAd256_digest(&s,(uint8_t *)&ei,ei_len);
     memset(&s,0,sizeof(sha2_state));
-
+    // XXX: HKDF to go here
     nistret = nist_ctr_drbg_reseed(&r->drbg,
                                    (const void *)&ei, ei_len,
                                    (const void *)&ad, ad_len);
@@ -315,4 +326,73 @@ drbg_reseed(r, ad, ad_len)
     }
     r->last_reseed = r->rbg_outb;
     return OK;
+}
+
+int
+hmac_random(buf,len,shawut)
+    unsigned char *buf;
+    uint32_t len;
+    enum SHAversion shawut;
+{
+    uint8_t *sys_rnd_buf;
+    uint8_t *urandom_buf;
+
+    assert(len <= USHAHashSize(shawut));
+    assert(len >= 16);
+
+
+    sys_rnd_buf = malloc(len);
+    if (sys_rnd_buf == NULL)
+        return -1;
+
+    urandom_buf = malloc(len);
+    if (urandom_buf == NULL)
+        return -1;
+
+    int fd;
+    ssize_t rret;
+    fd = open("/dev/urandom",O_RDONLY);
+    rret = read(fd,urandom_buf,len);
+    if (rret != len)
+    {
+        abort();
+    }
+    close(fd);
+
+    if (read_os_drbg(sys_rnd_buf,len)!=0)
+    {
+        abort();
+    }
+
+    HMACContext ctx;
+
+    hmacReset(&ctx,shawut,sys_rnd_buf,MIN(USHABlockSize(shawut)-1,len));
+    memset(sys_rnd_buf,0,len);
+    free(sys_rnd_buf);
+
+    hmacInput(&ctx,urandom_buf,len);
+    memset(urandom_buf,0,len);
+    free(urandom_buf);
+
+    if (RDRAND_present() == 1)
+    {
+        uint8_t *rdrand_buf;
+        rdrand_buf = malloc(len);
+        if (rdrand_buf == NULL)
+            return -1;
+        hmacInput(&ctx,rdrand_buf,len);
+        memset(rdrand_buf,0,len);
+        free(rdrand_buf);
+    }
+ 
+   uint8_t *digest;
+    digest = malloc(USHAHashSize(shawut));
+
+    hmacResult(&ctx,digest);
+    memcpy(buf,digest,len);
+    memset(digest,0,USHAHashSize(shawut));
+    free(digest);
+    memset(&ctx,0,sizeof(HMACContext));
+ 
+   return 0;
 }
