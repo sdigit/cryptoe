@@ -36,16 +36,21 @@
 #include <fcntl.h>
 
 #include "rng/os_drbg.h"
+#include "common.h"
 
-int read_os_drbg(obuf,outlen)
-    unsigned char *obuf;
-    size_t outlen;
+#if __NetBSD_Version__ < 600000000
+# error cprng(9) has not been validated for NetBSD < 7
+#endif /* __NetBSD_Version__ */
+int
+read_os_drbg(buf,buflen)
+    unsigned char *buf;
+    size_t buflen;
 {
     int fd;
     size_t rret;
     fd = open("/dev/urandom",O_RDONLY);
-    rret = read(fd,obuf,outlen);
-    if (rret != outlen)
+    rret = read(fd,buf,buflen);
+    if (rret != buflen)
     {
         close(fd);
         return -1;
