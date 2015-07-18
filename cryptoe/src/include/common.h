@@ -24,5 +24,14 @@
  * SUCH DAMAGE.
  */
 
+#ifndef COMMON_H
+#define COMMON_H
 
+typedef     __int128_t      int128_t;
+typedef     __uint128_t     uint128_t;
+
+int bytes_to_hex(unsigned char *,size_t,const unsigned char *,size_t);
 int pad(char *,size_t,size_t);
+void uname_to_kilobit(void *);
+
+#endif /* COMMON_H */

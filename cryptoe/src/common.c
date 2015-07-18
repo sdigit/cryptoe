@@ -25,7 +25,38 @@
  */
 
 #include <sys/types.h>
-#include "padding.h"
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/utsname.h>
+#include <inttypes.h>
+#include <string.h>
+#include "common.h"
+
+int
+bytes_to_hex(dst,dstlen,src,srclen)
+    unsigned char *dst;
+    size_t dstlen;
+    const unsigned char *src;
+    size_t srclen;
+{
+    if (dstlen < (srclen*2)+1)
+    {
+        return -1;
+    }
+
+    size_t i, j;
+	for(i=j=0; i<srclen; i++)
+	{
+		char c;
+		c = src[i] / 16; c = (c>9) ? c+'a'-10 : c + '0';
+		dst[j++] = c;
+		c = src[i] % 16; c = (c>9) ? c+'a'-10 : c + '0';
+		dst[j++] = c;
+	}
+    dst[j] = 0;
+    return 0;
+}
 
 int
 pad(msg,msg_len,padded_len)
@@ -49,4 +80,46 @@ pad(msg,msg_len,padded_len)
         msg[msg_len+pos] = pos;
     }
     return pos;
+}
+
+void
+uname_to_kilobit(b)
+    void *b;
+{
+    char *buf;
+    uint8_t *iptr;
+    unsigned int i, p;
+    struct utsname u;
+
+    buf = (char *)b;
+    iptr = (uint8_t *)buf;
+
+    p = 0;
+
+    for (i=0;i<strlen(u.sysname);i++)
+    {
+        iptr[p++] ^= u.sysname[i];
+        p %= 128;
+    }
+    for (i=0;i<strlen(u.nodename);i++)
+    {
+        iptr[p++] ^= u.nodename[i];
+        p %= 128;
+    }
+    for (i=0;i<strlen(u.release);i++)
+    {
+        iptr[p++] ^= u.release[i];
+        p %= 128;
+    }
+    for (i=0;i<strlen(u.version);i++)
+    {
+        iptr[p++] ^= u.version[i];
+        p %= 128;
+    }
+    for (i=0;i<strlen(u.machine);i++)
+    {
+        iptr[p++] ^= u.machine[i];
+        p %= 128;
+    }
+    memset(&u,0,sizeof(struct utsname));
 }
