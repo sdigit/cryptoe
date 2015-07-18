@@ -25,8 +25,17 @@ if os.uname()[0] in ['Linux', 'NetBSD']:
                          'src/rng/nist_ctr_drbg/rijndael-alg-fst.c',
                          'src/rng/nist_ctr_drbg/rijndael-api-fst.c',
                          'src/rng/nist_ctr_drbg/rijndael.c',
+                         'src/RFC6234/hkdf.c',
+                         'src/RFC6234/hmac.c',
+                         'src/RFC6234/sha1.c',
+                         'src/RFC6234/sha224-256.c',
+                         'src/RFC6234/sha384-512.c',
+                         'src/RFC6234/shatest.c',
+                         'src/RFC6234/usha.c',
                          'src/hash/SHAd256.c',
                          'src/rng/aes_ctr_drbg.c',
+                         'src/rng/rdrand.c',
+                         'src/common.c',
                          'src/rng/DRBG.c',
                      ])
     DRBG.sources.append('src/os/' + oslower + '.c')
@@ -45,7 +54,7 @@ setup(
     name='cryptoe',
     author='Sean Davis',
     author_email='cryptoe@endersgame.net',
-    version='2.1.0alpha',  # see also cryptoe/__init__.py
+    version='2.1.1alpha',  # see also cryptoe/__init__.py
     url='https://github.com/sdigit/cryptoe/',
     description='Small, easily integrated library for simple cryptography applications, avoiding OpenSSL.',
     packages=[
