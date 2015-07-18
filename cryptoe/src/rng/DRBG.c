@@ -40,6 +40,7 @@ staticforward PyTypeObject DRBGtype;
 
 static DRBG *newDRBG(void);
 static DRBG *DRBG_new(PyObject *,PyObject *);
+static PyObject *DRBG_reseed(PyObject *,PyObject *);
 static PyObject *DRBG_read(PyObject *,PyObject *);
 
 
@@ -56,8 +57,10 @@ newDRBG(void)
 	return r;
 }
 
+PyDoc_STRVAR(DRBG_reseed_doc,"reseeds the CTR_DRBG instance from additional data and OS-provided random");
 PyDoc_STRVAR(DRBG_read_doc,"returns bytes from CTR_DRBG (AES)");
 static struct PyMethodDef DRBG_OBJ_methods[] = {
+    {"reseed", (PyCFunction)DRBG_reseed, METH_NOARGS, DRBG_reseed_doc},
     {"read", (PyCFunction)DRBG_read, METH_O, DRBG_read_doc},
 	{NULL,			NULL}
 };
@@ -77,6 +80,27 @@ DRBG_new(PyObject *self, PyObject *args)
     DRBG *r;
     r = newDRBG();
 	return r;
+}
+
+static PyObject *
+DRBG_reseed(self,args)
+    PyObject *self;
+    PyObject *args;
+{
+    DRBG *dr;
+    int ret;
+    dr = (DRBG *)self;
+
+    ret = drbg_reseed_ad(&dr->rbg);
+    if (ret == -1)
+    {
+        PyErr_SetString(PyExc_OSError,"DRBG indicated a failure");
+        return NULL;
+    }
+    RBG *r;
+    r = (RBG *)&dr->rbg;
+    PyObject *rval = PyLong_FromUnsignedLongLong(r->rbg_last_reseeded);
+    return rval;
 }
 
 static PyObject *

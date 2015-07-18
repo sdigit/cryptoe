@@ -29,6 +29,7 @@
 
 #include <inttypes.h>
 #include <sys/time.h>
+#include "common.h"
 #include "rng/nist_ctr_drbg.h"
 #include "RFC6234/sha.h"
 
@@ -39,17 +40,6 @@
 #define AD_SIZE             (AD_RBG_BITS + AD_CLK_BITS + AD_XID_BITS) / 8
 
 #define DRBG_SEEDLEN        NIST_BLOCK_SEEDLEN_BYTES
-
-/* RBG flags */
-#define RBG_NEW         1
-#define RBG_OK          2
-#define RBG_WARN        4
-#define RBG_RBG_RESEED  8
-#define RF_NEW(x)       ((x)->flags & RBG_NEW)    == RBG_NEW)
-#define RF_OK(x)        ((x)->flags & RBG_OK)     == RBG_OK)
-#define RF_WARN(x)      ((x)->flags & RBG_WARN)   == RBG_WARN)
-#define RF_RESEED(x)    ((x)->flags & RBG_RESEED) == RBG_RESEED)
-
 
 /* return values */
 #define OK 0
@@ -75,27 +65,37 @@ typedef union {
     uint8_t ad_bytes[AD_VAL_BYTES];
 } ADATA;
 
+/*
+ * RNG instance and minimal required metadata:
+ * DRBG,
+ * function to get additional data,
+ * function to generate a key (or seed, or salt),
+ * function to generate a nonce
+ */
+
 typedef struct {
     NIST_CTR_DRBG   drbg;
-    uint64_t        rbg_outb;
-    uint64_t        last_reseed;
-    uint8_t         flags;
+    uint64_t        rbg_bytes_output;
+    uint64_t        rbg_requests;
+    uint64_t        rbg_last_reseeded;
     int             (*rbg_rnd)(unsigned char *,size_t);
     ADATA *         (*rbg_adata)(void);
-    int             (*rbg_seed)(uint8_t *,uint32_t);
+    int             (*rbg_key)(uint8_t *,uint32_t);
     uint64_t        (*rbg_nonce)(void);
 } RBG;
 
-/* functions used by the drbg_* functions */
+
+/* Get and clear Additional Data (as defined above) */
 ADATA *new_adata(void);
+void dump_adata(ADATA *);
 void free_adata(ADATA *);
-int rbg_genseed(uint8_t *, uint32_t);
-int hmac_random(unsigned char *,uint32_t,enum SHAversion);
+
 /* functions used directly */
 RBG *drbg_new(void);
 void drbg_destroy(RBG *);
 int drbg_generate(RBG *, uint8_t *, uint32_t);
 int drbg_reseed(RBG *, void *, uint32_t);
+int drbg_reseed_ad(RBG *);
 
 #endif /* DRBG_API_H */
 
