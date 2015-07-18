@@ -40,17 +40,81 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "common.h"
 #include "rng/rdrand.h"
 #include "rng/nist_ctr_drbg.h"
 #include "rng/os_drbg.h"
 #include "rng/drbg_api.h"
 #include "RFC6234/sha.h"
-#include "SHAd256.h"
+
+#define RBG_KEYLEN      64
+#define HKDF_INFO_LEN   (size_t)32
+
+typedef struct HKDF_buffers {
+    uint8_t         salt[RBG_KEYLEN];       /* (EXT) salt*/
+    uint8_t         ikm[RBG_KEYLEN];        /* (EXT) Input Keying Material */
+    uint8_t         prk[RBG_KEYLEN];        /* (EXT|EXP) Pseudo-Random Key */
+    uint8_t         okm[RBG_KEYLEN];        /* (EXP) Output Keying Material */
+    unsigned char   info[HKDF_INFO_LEN];    /* (EXP) Info String */
+    struct HKDFContext context;             /* (EXT|EXP) RFC6434 Context */
+} HKDF_buffers;
+
+typedef struct rbg_buffers {
+    int             key_len;        /* DRBG entropy input buffer size */
+    int             nonce_len;      /* size of nonce */
+    uint64_t        nonce;          /* nonce for init of CTR_DRBG */
+    HKDF_buffers    hkdf;           /* storage for HKDF information */
+} rbg_buffers;
 
 static int DRBG_STATUS;
 static uint64_t clk_monotonic(void);
 static uint64_t clk_realtime(void);
+static int genkey_rbg(uint8_t *,uint32_t);
 
+static rbg_buffers *rbg_alloc_buffers(void);
+static void rbg_destroy_buffers(rbg_buffers *);
+
+static RBG *rbg_alloc(void);
+static void rbg_destroy(RBG *);
+
+static rbg_buffers *
+rbg_alloc_buffers()
+{
+    rbg_buffers *ptr;
+    ptr = (struct rbg_buffers *)malloc(sizeof(rbg_buffers));
+    if (ptr == NULL)
+    {
+        return NULL;
+    }
+    HKDF_buffers *h;
+
+    ptr->key_len = 64;
+    ptr->nonce_len = 8;
+
+    h = (HKDF_buffers *)&ptr->hkdf;
+    memset(h->salt,0,64);
+    memset(h->ikm,0,64);
+    memset(h->okm,0,64);
+    memset(h->prk,0,64);
+    memset(&h->context,0,sizeof(HKDFContext));
+    return ptr;
+}
+
+void
+rbg_destroy_buffers(ptr)
+    struct rbg_buffers *ptr;
+{
+    memset(ptr,0,sizeof(struct rbg_buffers));
+    ptr->key_len = 0;
+    ptr->nonce_len = 0;
+    free(ptr);
+}
+
+
+/*
+ * Get the current value of the monotonic clock
+ * Return it as an unsigned 64 bit integer
+ */
 static uint64_t
 clk_monotonic()
 {
@@ -63,6 +127,10 @@ clk_monotonic()
     return n;
 }
 
+/*
+ * Get the current value of the realtime clock
+ * Return it as an unsigned 64 bit integer
+ */
 static uint64_t
 clk_realtime()
 {
@@ -82,7 +150,6 @@ new_adata()
     ad = malloc(sizeof(ADATA));
     if (ad == NULL)
         return NULL;
-
     ad->ad_vals.clk_mono = clk_monotonic();
     ad->ad_vals.clk_real = clk_realtime();
     ad->ad_vals.uid = getuid();
@@ -106,44 +173,88 @@ free_adata(adp)
     free(adp);
 }
 
-int
-rbg_genseed(seed,len)
+static RBG *
+rbg_alloc()
+{
+    RBG *r;
+    r = malloc(sizeof(RBG));
+    if (r == NULL)
+    {
+        return NULL;
+    }
+    memset(r,0,sizeof(RBG));
+
+    r->rbg_bytes_output     = 0;
+    r->rbg_requests         = 0;
+    r->rbg_last_reseeded    = 0;
+    r->rbg_rnd              = read_os_drbg;
+    r->rbg_adata            = new_adata;
+    r->rbg_nonce            = clk_monotonic;
+    r->rbg_key              = genkey_rbg;
+    return r;
+}
+
+static void
+rbg_destroy(ptr)
+    RBG *ptr;
+{
+    memset(ptr,0,sizeof(RBG));
+    free(ptr);
+};
+
+static int
+genkey_rbg(seed,len)
     uint8_t *seed;
     uint32_t len;
 {
-    uint8_t *randseed;
-    size_t drbg_read_len;
+    if (len > 64)
+    {
+        return FAIL;
+    }
+
+    uint8_t sysid_kb[128];
+    uint8_t digest[64];
+    uint8_t *rnd_in;
+    int hmnope = 0;
     ADATA *ad;
+    HMACContext h;
 
-    drbg_read_len = len;
-
-    randseed = malloc(drbg_read_len);
-    if (randseed == NULL)
+    rnd_in = malloc(len);
+    if (rnd_in == NULL)
         return FAIL;
 
-    memset(randseed,0,drbg_read_len);
-
-    if (read_os_drbg(randseed,drbg_read_len) == -1)
+    memset(rnd_in,0,len);
+    if (read_os_drbg(rnd_in,len) == -1)
     {
-        memset(randseed,0,len);
-        free(randseed);
+        memset(rnd_in,0,len);
+        free(rnd_in);
         return FAIL;
     }
+    uname_to_kilobit(&sysid_kb);
     ad = new_adata();
-    uint32_t i;
-    // XXX: HKDF to go here
-    if (sizeof(*ad) >= drbg_read_len)
-    {
-        for (i=0;i<len;i++)
-        {
-            seed[i] = randseed[i] ^ ad->ad_bytes[i];
-        }
-    }
-    else
-    {
-        // XXX: HKDF
-    }
+    memset(ad->ad_vals.rbg,0,AD_RBG_BYTES);
+
+    hmnope = hmacReset(&h,SHA512,(const unsigned char *)&ad,64) ||
+                hmacInput(&h,(const unsigned char *)&sysid_kb,128) ||
+                hmacResult(&h,(uint8_t *)&digest);
     free_adata(ad);
+    memset(&h,0,sizeof(HMACContext));
+    memset(&sysid_kb,0,128);
+    if (hmnope)
+    {
+        memset(rnd_in,0,len);
+        free(rnd_in);
+        return FAIL;
+    }
+
+    int i;
+
+    for (i=0;i<64;i++)
+    {
+        seed[i] = rnd_in[i] ^ digest[i];
+    }
+    memset(rnd_in,0,len);
+    free(rnd_in);
     return OK;
 }
 
@@ -151,71 +262,79 @@ RBG *
 drbg_new()
 {
     RBG *r;
-    int nistret;
+    rbg_buffers *rb;
     int iret;
-    r = malloc(sizeof(RBG));
+    union {
+        uint32_t id[2];
+        char str[8];
+    } p;
+
+
+    p.id[0] = getpid();
+    p.id[1] = getuid();
+
+    r = rbg_alloc();
     if (r == NULL)
     {
         return NULL;
     }
-    memset(r,0,sizeof(RBG));
-    r->rbg_outb = 0;
-    r->last_reseed = 0;
-    r->rbg_rnd = read_os_drbg;
-    r->rbg_adata = new_adata;
-    r->rbg_nonce = clk_monotonic;
-    r->rbg_seed = rbg_genseed;
-
-    nistret = nist_ctr_initialize();
-    if (nistret != 0)
-    {
-        memset(r,0,sizeof(RBG));
-        free(r);
-        return NULL;
-    }
-
-    uint64_t nonce;
-    int noncelen, ei_len, pstrlen;
-    uint8_t ei[32];
-    char pstr[8];
-
-    ei_len = 32;
-    noncelen = 8;
-    pstrlen = 8;
-
-    snprintf(pstr,pstrlen,"u%xg%x",getuid(),getgid());
-
-    iret = (r->rbg_rnd)((unsigned char *)ei,(size_t)ei_len);
+    iret = nist_ctr_initialize();
     if (iret != 0)
     {
-        memset(ei,0,ei_len);
-        memset(r,0,sizeof(RBG));
-        free(r);
+        rbg_destroy(r);
         return NULL;
     }
-
-    sha2_state s;
-    SHAd256_init(&s);
-    SHAd256_update(&s,(uint8_t *)&ei,ei_len);
-    memset(&ei,0,ei_len);
-    SHAd256_digest(&s,(uint8_t *)&ei,ei_len);
-    memset(&s,0,sizeof(sha2_state));
-
-    nonce = (r->rbg_nonce)();
-    // XXX: HKDF to go here
-    nistret = nist_ctr_drbg_instantiate(&r->drbg,
-                                        (const void *)&ei,      ei_len,
-                                        (const void *)&nonce,   noncelen,
-                                        (char *)&pstr,          pstrlen);
-    if (nistret != 0)
+    rb = rbg_alloc_buffers();
+    if (rb == NULL)
     {
-        memset(ei,0,ei_len);
-        memset(r,0,sizeof(RBG));
-        nonce = 0;
-        free(r);
+        rbg_destroy(r);
         return NULL;
     }
-    DRBG_STATUS = STATUS_OK;
+
+    rb->nonce = (r->rbg_nonce)();
+
+
+    iret =  (!(strlcpy((char *)rb->hkdf.info,
+                "CTR_DRBG+DF+PR+HKDF(256)",
+                 HKDF_INFO_LEN) <= HKDF_INFO_LEN)) ||
+            (r->rbg_rnd)((unsigned char *)rb->hkdf.salt,
+                (size_t)rb->key_len) ||
+            (r->rbg_key)((uint8_t *)rb->hkdf.ikm,
+                rb->key_len) ||
+            hkdfExtract(SHA512,
+                (const unsigned char *)rb->hkdf.salt,
+                rb->key_len,
+                (const unsigned char *)rb->hkdf.salt,
+                rb->key_len,
+                rb->hkdf.prk) ||
+            hkdfExpand(SHA512,
+                rb->hkdf.prk,
+                USHAHashSize(SHA512),
+                rb->hkdf.info,
+                HKDF_INFO_LEN,
+                rb->hkdf.okm,
+                rb->key_len) ||
+            nist_ctr_drbg_instantiate(&(r->drbg),
+                rb->hkdf.okm,
+                rb->key_len,
+                &rb->nonce,
+                rb->nonce_len,
+                p.str,
+                sizeof(p));
+
+    rbg_destroy_buffers(rb);
+    memset((void *)&p,0,8);
+    rb = NULL;
+
+    if (iret != 0)
+    {
+        rbg_destroy_buffers(rb);
+        rbg_destroy(r);
+        DRBG_STATUS = STATUS_ERR;
+        return NULL;
+    }
+
+    DRBG_STATUS = drbg_reseed_ad(r) == 0 ? STATUS_OK : STATUS_ERR;
     return r;
 }
 
@@ -236,60 +355,61 @@ drbg_generate(r,buf,len)
     uint8_t *buf;
     uint32_t len;
 {
+    if (DRBG_STATUS != STATUS_OK)
+    {
+        return FAIL;
+    }
     if (len > 524288)
     {
         return FAIL;
     }
 
-    ADATA *ad;
-    unsigned char *ad_rbg_bytes;
-    unsigned char ad_rbg_digest[AD_RBG_BYTES];
-    sha2_state s;
-
-    ad_rbg_bytes = malloc(AD_RBG_BYTES);
-    if (ad_rbg_bytes == NULL)
+    if ((r->rbg_bytes_output - r->rbg_last_reseeded) + len >= (NIST_CTR_DRBG_RESEED_INTERVAL/2))
     {
-        return FAIL;
-    }
-    ad = new_adata();
-
-
-    memcpy(ad_rbg_bytes,ad->ad_vals.rbg,AD_RBG_BYTES);
-    free_adata(ad);
-    SHAd256_init(&s);
-    SHAd256_update(&s,(uint8_t *)ad_rbg_bytes,AD_RBG_BYTES);
-    memset(ad_rbg_bytes,0,AD_RBG_BYTES);
-    free(ad_rbg_bytes);
-    SHAd256_digest(&s,(uint8_t *)ad_rbg_digest,AD_RBG_BYTES);
-    memset(&s,0,sizeof(sha2_state));
-
-    if ((r->rbg_outb - r->last_reseed) + len >= (NIST_CTR_DRBG_RESEED_INTERVAL/2))
-    {
-        ADATA *rad;
-        struct additional_data *advals;
-        rad = new_adata();
-        advals = &rad->ad_vals;
         int nr;
-        nr = drbg_reseed(r,&advals->clk_mono,8);
-        free_adata(rad);
+        nr = drbg_reseed_ad(r);
         if (nr != OK)
         {
             return FAIL;
         }
-        r->last_reseed = r->rbg_outb;
     }
 
-    int nistret;
-    nistret = nist_ctr_drbg_generate(&r->drbg,
-                                     (void *)buf, (int)len,
-                                     (const void *)&ad_rbg_digest, AD_RBG_BYTES);
-    // XXX: HKDF to go here
-    r->rbg_outb += len;
-    memset(ad_rbg_bytes,0,AD_RBG_BYTES);
-    if (nistret != 0)
+    int iret;
+    ADATA *ad;
+    ad = new_adata();
+    iret = nist_ctr_drbg_generate(&r->drbg,
+                                  (void *)buf, (int)len,
+                                  (const void *)ad, sizeof(*ad));
+    free_adata(ad);
+    if (iret != 0)
     {
+        DRBG_STATUS = STATUS_ERR;
         return FAIL;
     }
+
+    rbg_buffers *rb;
+    rb = rbg_alloc_buffers();
+    if (rb == NULL)
+    {
+        DRBG_STATUS = STATUS_ERR;
+        return FAIL;
+    }
+
+    memcpy(rb->hkdf.ikm,buf,len);
+    memset(buf,0,len);
+    genkey_rbg(rb->hkdf.salt,len);
+
+    if (hkdf(SHA512,
+        rb->hkdf.salt,len,
+        rb->hkdf.ikm,len,
+        (const unsigned char *)"CTR_DRBG->HKDF->OUTPUT",22,
+        buf,len))
+    {
+        DRBG_STATUS = STATUS_ERR;
+        return FAIL;
+    }
+
+    r->rbg_bytes_output += len;
     return OK;
 }
 
@@ -299,100 +419,53 @@ drbg_reseed(r, ad, ad_len)
     void *ad;
     uint32_t ad_len;
 {
-    uint8_t ei[32];
+    if (DRBG_STATUS != STATUS_OK)
+    {
+        return FAIL;
+    }
+
+    uint8_t ei[48];
     int nistret, iret, ei_len;
 
-    ei_len = 32;
+    ei_len = 48;
 
     iret = (r->rbg_rnd)((unsigned char *)ei,(size_t)ei_len);
     if (iret != 0)
     {
         return FAIL;
     }
-
-    sha2_state s;
-    SHAd256_init(&s);
-    SHAd256_update(&s,(uint8_t *)&ei,ei_len);
-    memset(&ei,0,ei_len);
-    SHAd256_digest(&s,(uint8_t *)&ei,ei_len);
-    memset(&s,0,sizeof(sha2_state));
-    // XXX: HKDF to go here
     nistret = nist_ctr_drbg_reseed(&r->drbg,
                                    (const void *)&ei, ei_len,
-                                   (const void *)&ad, ad_len);
+                                   (const void *)ad, ad_len);
     if (nistret != 0)
     {
         return FAIL;
     }
-    r->last_reseed = r->rbg_outb;
+    r->rbg_last_reseeded = r->rbg_bytes_output;
     return OK;
 }
 
-int
-hmac_random(buf,len,shawut)
-    unsigned char *buf;
-    uint32_t len;
-    enum SHAversion shawut;
+int drbg_reseed_ad(r)
+    RBG *r;
 {
-    uint8_t *sys_rnd_buf;
-    uint8_t *urandom_buf;
-
-    assert(len <= USHAHashSize(shawut));
-    assert(len >= 16);
-
-
-    sys_rnd_buf = malloc(len);
-    if (sys_rnd_buf == NULL)
-        return -1;
-
-    urandom_buf = malloc(len);
-    if (urandom_buf == NULL)
-        return -1;
-
-    int fd;
-    ssize_t rret;
-    fd = open("/dev/urandom",O_RDONLY);
-    rret = read(fd,urandom_buf,len);
-    if (rret != len)
+    if (DRBG_STATUS != STATUS_OK)
     {
-        abort();
-    }
-    close(fd);
-
-    if (read_os_drbg(sys_rnd_buf,len)!=0)
-    {
-        abort();
+        return FAIL;
     }
 
-    HMACContext ctx;
-
-    hmacReset(&ctx,shawut,sys_rnd_buf,MIN(USHABlockSize(shawut)-1,len));
-    memset(sys_rnd_buf,0,len);
-    free(sys_rnd_buf);
-
-    hmacInput(&ctx,urandom_buf,len);
-    memset(urandom_buf,0,len);
-    free(urandom_buf);
-
-    if (RDRAND_present() == 1)
-    {
-        uint8_t *rdrand_buf;
-        rdrand_buf = malloc(len);
-        if (rdrand_buf == NULL)
-            return -1;
-        hmacInput(&ctx,rdrand_buf,len);
-        memset(rdrand_buf,0,len);
-        free(rdrand_buf);
-    }
- 
-   uint8_t *digest;
-    digest = malloc(USHAHashSize(shawut));
-
-    hmacResult(&ctx,digest);
-    memcpy(buf,digest,len);
-    memset(digest,0,USHAHashSize(shawut));
-    free(digest);
-    memset(&ctx,0,sizeof(HMACContext));
- 
-   return 0;
+    int nistret,ad_len,ei_len;
+    uint8_t ei[48];
+    ADATA *ad;
+    ad = new_adata();
+    ei_len = 48;
+    ad_len = sizeof(*ad);
+    nistret = nist_ctr_drbg_reseed(&r->drbg,
+                                   (const void *)&ei, ei_len,
+                                   (const void *)ad, ad_len);
+    free_adata(ad);
+    memset(&ei,0,ei_len);
+    if (nistret != 0)
+        return FAIL;
+    r->rbg_last_reseeded = r->rbg_bytes_output;
+    return OK;
 }
