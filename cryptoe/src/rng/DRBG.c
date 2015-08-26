@@ -47,14 +47,14 @@ static PyObject *DRBG_read(PyObject *,PyObject *);
 static DRBG *
 newDRBG(void)
 {
-	DRBG *r;
-	r = PyObject_New(DRBG, &DRBGtype);
-    RBG *rbg_tmp;
-    rbg_tmp = drbg_new();
-    memcpy(&r->rbg,rbg_tmp,sizeof(RBG));
-    memset(rbg_tmp,0,sizeof(RBG));
-    free(rbg_tmp);
-	return r;
+	DRBG *ptr;
+    ptr = PyObject_New(DRBG, &DRBGtype);
+    RBG *r;
+    r = new_rbg();
+    memset(&ptr->rbg,0,sizeof(struct RBG));
+    memcpy(&ptr->rbg,r,sizeof(struct RBG));
+    r->destroy(&r);
+	return ptr;
 }
 
 PyDoc_STRVAR(DRBG_reseed_doc,"reseeds the CTR_DRBG instance from additional data and OS-provided random");
@@ -67,10 +67,14 @@ static struct PyMethodDef DRBG_OBJ_methods[] = {
 
 
 static void
-DRBG_dealloc(PyObject *ptr)
+DRBG_dealloc(PyObject *self)
 {
-	DRBG *self = (DRBG *)ptr;
-    drbg_destroy(&self->rbg);
+	DRBG *ptr = (DRBG *)&self;
+    RBG *r = (RBG *)&ptr->rbg;
+
+    void (*df)(void *);
+    df = r->destroy;
+    df(&r);
 	PyObject_Del(ptr);
 }
 
@@ -87,18 +91,16 @@ DRBG_reseed(self,args)
     PyObject *self;
     PyObject *args;
 {
-    DRBG *dr;
+    DRBG *dr = (DRBG *)&self;
+    RBG *r = (RBG *)&dr->rbg;
     int ret;
-    dr = (DRBG *)self;
-
-    ret = drbg_reseed_ad(&dr->rbg);
+   
+    ret = (r->reseed)(r);
     if (ret == -1)
     {
         PyErr_SetString(PyExc_OSError,"DRBG indicated a failure");
         return NULL;
     }
-    RBG *r;
-    r = (RBG *)&dr->rbg;
     PyObject *rval = PyLong_FromUnsignedLongLong(r->rbg_last_reseeded);
     return rval;
 }
@@ -122,7 +124,6 @@ DRBG_read(self,args)
     }
 
     int ret;
-    DRBG *dr;
     char *buf;
     buf = malloc(len);
     if (buf == NULL)
@@ -131,9 +132,9 @@ DRBG_read(self,args)
         return NULL;
     }
 
-    dr = (DRBG *)self;
-
-    ret = drbg_generate(&dr->rbg, (uint8_t *)buf, len);
+    DRBG *dr = (DRBG *)&self;
+    RBG *r = (RBG *)&dr->rbg;
+    ret = (r->generate)(r, (uint8_t *)buf, len);
     if (ret == -1)
     {
         free(buf);
@@ -141,7 +142,6 @@ DRBG_read(self,args)
         return NULL;
     }
     PyObject *pbuf = PyBytes_FromStringAndSize(buf, len);
-/*    memset(buf,0,len); */
     return pbuf;
 }
 

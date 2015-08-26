@@ -90,7 +90,7 @@ NIST_HTONL(unsigned long x)
 		return be32toh(x);
 	    default:
 		return be64toh(x);
-	{
+	}
 }
 static inline unsigned long
 NIST_NTOHL(unsigned long x)
@@ -100,6 +100,7 @@ NIST_NTOHL(unsigned long x)
 		return htobe32(x);
 	    default:
 		return htobe64(x);
+    }
 }
 #endif
 

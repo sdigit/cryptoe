@@ -30,7 +30,6 @@ if os.uname()[0] in ['Linux', 'NetBSD']:
                          'src/RFC6234/sha1.c',
                          'src/RFC6234/sha224-256.c',
                          'src/RFC6234/sha384-512.c',
-                         'src/RFC6234/shatest.c',
                          'src/RFC6234/usha.c',
                          'src/hash/SHAd256.c',
                          'src/rng/aes_ctr_drbg.c',

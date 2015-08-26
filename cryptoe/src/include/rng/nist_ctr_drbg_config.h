@@ -64,7 +64,7 @@
  * I'd rather play it safe
  * -Sean
  */
-#define NIST_IS_LITTLE_ENDIAN 1
+#undef NIST_IS_LITTLE_ENDIAN
 
 /* Without NIST_ZEROIZE, we leave some intermediaries on the stack. */
 #define NIST_ZEROIZE 1

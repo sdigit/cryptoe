@@ -27,75 +27,25 @@
 #ifndef DRBG_API_H
 # define DRBG_API_H
 
-#include <inttypes.h>
-#include <sys/time.h>
-#include "common.h"
 #include "rng/nist_ctr_drbg.h"
+#include "rng/nist_ctr_aes_rijndael.h"
 #include "RFC6234/sha.h"
 
-#define AD_RBG_BITS         (16*8) /* 16 uint8_t's */
-#define AD_CLK_BITS         (64*2) /* 3 uint64_t's */
-#define AD_XID_BITS         (32*3) /* 3 uint32_t's */
-#define AD_RBG_BYTES        AD_RBG_BITS / 8 /* self explanatory */
-#define AD_SIZE             (AD_RBG_BITS + AD_CLK_BITS + AD_XID_BITS) / 8
-
-#define DRBG_SEEDLEN        NIST_BLOCK_SEEDLEN_BYTES
-
-/* return values */
-#define OK 0
-#define FAIL -1
-#define RESEED_NEEDED -2
-
-/* status values */
-#define STATUS_OK 0
-#define STATUS_ERR 1
-
-struct additional_data {
-    uint8_t     rbg[AD_RBG_BYTES];  /* output from another RBG */
-    uint64_t    clk_mono;           /* monotonic clock */
-    uint64_t    clk_real;           /* realtime clock */
-    uint32_t    uid;                /* user id */
-    uint32_t    gid;                /* group id */
-    uint32_t    pid;                /* process id */
-};
-
-#define AD_VAL_BYTES    sizeof(struct additional_data)
-typedef union {
-    struct additional_data ad_vals;
-    uint8_t ad_bytes[AD_VAL_BYTES];
-} ADATA;
-
 /*
- * RNG instance and minimal required metadata:
- * DRBG,
- * function to get additional data,
- * function to generate a key (or seed, or salt),
- * function to generate a nonce
+ * structure to interface with aes_ctr_drbg.c's RBG instance
  */
 
-typedef struct {
-    NIST_CTR_DRBG   drbg;
+typedef struct RBG {
     uint64_t        rbg_bytes_output;
     uint64_t        rbg_requests;
     uint64_t        rbg_last_reseeded;
-    int             (*rbg_rnd)(unsigned char *,size_t);
-    ADATA *         (*rbg_adata)(void);
-    int             (*rbg_key)(uint8_t *,uint32_t);
-    uint64_t        (*rbg_nonce)(void);
-} RBG;
+    int             (*reseed)(void *);
+    int             (*generate)(void *,uint8_t *,uint32_t);
+    void            (*destroy)(void *);
+    struct NIST_CTR_DRBG *drbg;
+} RBG __attribute__ ((aligned(8)));
 
-
-/* Get and clear Additional Data (as defined above) */
-ADATA *new_adata(void);
-void dump_adata(ADATA *);
-void free_adata(ADATA *);
-
-/* functions used directly */
-RBG *drbg_new(void);
-void drbg_destroy(RBG *);
-int drbg_generate(RBG *, uint8_t *, uint32_t);
-int drbg_reseed(RBG *, void *, uint32_t);
-int drbg_reseed_ad(RBG *);
+RBG *new_rbg(void);
 
 #endif /* DRBG_API_H */
 

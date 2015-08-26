@@ -49,3 +49,10 @@ $ cc -c -Wall -Wunused-result -Wstrict-prototypes -Werror rijndael.c
 $ ar rcs nist_ctr_drbg.a nist_ctr_drbg.o rijndael-alg-fst.o rijndael-api-fst.o rijndael.o
 
 Code is now usable.
+
+Undefined NIST_IS_LITTLE_ENDIAN in nist_ctr_drbg_config.h, which caused:
+src/rng/nist_ctr_drbg/nist_ctr_drbg.c: In function ‘NIST_HTONL’:
+src/rng/nist_ctr_drbg/nist_ctr_drbg.c:689:1: error: expected declaration or statement at end of input
+src/rng/nist_ctr_drbg/nist_ctr_drbg.c:689:1: error: expected declaration or statement at end of input
+
+Fixed broken endian-swapping code in the macros enabled by removing NIST_IS_LITTLE_ENDIAN

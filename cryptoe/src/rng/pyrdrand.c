@@ -101,7 +101,7 @@ rdrand_bytes(self,args)
     }
 
     int rdrand_ret;
-    rdrand_ret = rdrand_get_bytes(rdrand_arg, buf);
+    rdrand_ret = rdrand_get_bytes(buf, rdrand_arg);
     if (rdrand_ret == RDRAND_NOT_READY)
     {
         memset(buf,0,rdrand_arg);
