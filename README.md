@@ -1,6 +1,8 @@
 ## CRYPTOE ##
 #### A project aiming to offer a full set of cryptographic routines to make implementing crypto in any Python project easy. ####
 
+## DO NOT USE THIS CODE UNLESS YOU ARE SERIOUS ABOUT TRUSTING UNPROVEN CRYPTO ##
+
 Cryptoe is intended to offer an easy to use API to common cryptographic tasks, as well as key storage that follows the
 NIST requirements as closely as possible[1]
 
